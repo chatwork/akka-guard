@@ -39,7 +39,9 @@ libraryDependencies ++= Seq(
   Scala.java8Compat,
   Circe.core,
   Circe.generic,
-  Circe.parser
+  Circe.parser,
+  Akka.actor,
+  Akka.testKit % Test
 )
 
 updateOptions := updateOptions.value.withCachedResolution(true)

@@ -17,7 +17,7 @@ object ScalaTest {
 }
 
 object Cats {
-  val v1_4_0="org.typelevel"         %% "cats-core"            % "1.4.0"
+  val v1_4_0 = "org.typelevel" %% "cats-core" % "1.4.0"
 }
 
 object Enumeratum {
@@ -28,3 +28,8 @@ object ScalaCheck {
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
 }
 
+object Akka {
+  val version           = "2.5.17"
+  val actor: ModuleID   = "com.typesafe.akka" %% "akka-actor" % version
+  val testKit: ModuleID = "com.typesafe.akka" %% "akka-testkit" % version
+}
