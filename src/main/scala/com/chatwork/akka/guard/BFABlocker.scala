@@ -51,47 +51,23 @@ private[guard] class BFABlocker[T, R](
   private def createSchedule: Cancellable =
     context.system.scheduler.scheduleOnce(failureTimeout, self, Tick)
 
-  //  private val open: Receive = {
-  //    case GetStatus    => sender() ! BFABlockerStatus.Open
-  //    case Tick         =>
-  //    case msg: Message => sender ! Future.fromTry(failedResponse)
-  //  }
-  //
-  //  private def closed(failureCount: Long): Receive = {
-  //    case GetStatus =>
-  //      sender() ! BFABlockerStatus.Closed
-  //
-  //    case Tick =>
-  //      if (failureCount > maxFailures) {
-  //        context.become(open)
-  //        context.system.scheduler.scheduleOnce(resetTimeout) {
-  //          createSchedule
-  //          context.unbecome()
-  //        }
-  //      } else context.become(closed(0))
-  //
-  //    case msg: Message =>
-  //      val future = f(msg.body.asInstanceOf[T])
-  //      future.onComplete {
-  //        case Failure(ex) =>
-  //          context.become(closed(failureCount + 1))
-  //        case _ =>
-  //          context.become(closed(0))
-  //      }
-  //      sender ! future
-  //  }
-
-  //  private def open: Receive = ???
+  private val open: Receive = {
+    case GetStatus        => sender ! BFABlockerStatus.Open // For debugging
+    case Tick             =>
+    case _: BFAMessage[T] => sender ! Future.fromTry(failedResponse)
+  }
 
   private def closed(failureCount: Long): Receive = {
-    // For debugging
-    case GetStatus =>
-      sender ! BFABlockerStatus.Closed
+    case GetStatus => sender ! BFABlockerStatus.Closed // For debugging
 
     case Tick =>
       if (failureCount > maxFailures) {
         log.debug("Become an open status.")
-        //        context.become(open)
+        context.become(open)
+        context.system.scheduler.scheduleOnce(resetTimeout) {
+          createSchedule
+          context.stop(self)
+        }
       } else {
         log.debug("Become a close 0.")
         context.become(closed(0))

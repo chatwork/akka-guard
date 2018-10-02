@@ -34,14 +34,14 @@ resolvers ++= Seq(
 libraryDependencies ++= Seq(
   ScalaTest.v3_0_5      % Test,
   ScalaCheck.scalaCheck % Test,
+  Akka.testKit          % Test,
   Cats.v1_4_0,
   Enumeratum.latest,
   Scala.java8Compat,
   Circe.core,
   Circe.generic,
   Circe.parser,
-  Akka.actor,
-  Akka.testKit % Test
+  Akka.actor
 )
 
 updateOptions := updateOptions.value.withCachedResolution(true)
