@@ -4,15 +4,15 @@ import java.util.concurrent.Executors
 
 import akka.actor._
 import akka.pattern.ask
-import akka.testkit.TestKit
+import akka.testkit.{TestKit, TestProbe}
 import akka.util.Timeout
 import org.scalacheck._
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
-import org.scalatest.time.{ Millis, Seconds, Span }
+import org.scalatest.time.{Millis, Seconds, Span}
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.util.Failure
 import scala.util.control.NonFatal
@@ -38,7 +38,6 @@ class BFABrokerSpec
 
       "Close state" in {
         val success       = (message: BFAMessage[String]) => s"${message.request}-success"
-        val error         = (message: BFAMessage[String]) => s"$message-error"
         val failedMessage = "bar"
 
         val func: BFAMessage[String] => Future[String] = msg => Future.successful(success(msg))
@@ -68,11 +67,7 @@ class BFABrokerSpec
         forAll(minSuccessful(5)) { tuple: (String, BFABrokerConfig[String, String]) =>
           {
             val BrokerName = s"broker-${tuple._1}"
-            try {
-              system.actorOf(Props(new BFABroker(tuple._2)), BrokerName)
-            } catch {
-              case NonFatal(_) => ()
-            }
+            val brokerRef = system.actorOf(Props(new BFABroker(tuple._2)), BrokerName)
 
             forAll { (generator: String => BFAMessage[String]) =>
               {
@@ -84,6 +79,7 @@ class BFABrokerSpec
                   .mapTo[BFABlockerStatus].futureValue shouldBe BFABlockerStatus.Closed
               }
             }
+            system.stop(brokerRef)
           }
         }
       }
@@ -108,24 +104,27 @@ class BFABrokerSpec
         )
 
         val brokerName = "broker-2"
-        system.actorOf(Props(new BFABroker(config)), brokerName)
+        val brokerRef = system.actorOf(Props(new BFABroker(config)), brokerName)
 
         val message = BFAMessage("id", "hoge")
-        (system.actorSelection(system / brokerName) ? message)
+        (brokerRef ? message)
           .mapTo[Future[String]].futureValue.failed.futureValue.getMessage shouldBe error(message)
 
         Thread.sleep(1000L)
 
         forAll { message: BFAMessage[String] =>
           {
-            (system.actorSelection(system / brokerName) ? message)
+            (brokerRef ? message)
               .mapTo[Future[String]].futureValue.failed.futureValue.getMessage shouldBe failedResponseMessage
 
             (system.actorSelection(system / brokerName / BFABlocker.name(message.id)) ? BFABlocker.GetStatus)
               .mapTo[BFABlockerStatus].futureValue shouldBe BFABlockerStatus.Open
           }
         }
+
+        system.stop(brokerRef)
       }
+
     }
 
   }
