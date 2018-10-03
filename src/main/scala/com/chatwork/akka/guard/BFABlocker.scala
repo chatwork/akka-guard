@@ -53,7 +53,6 @@ private[guard] class BFABlocker[T, R](
 
   private val open: Receive = {
     case GetStatus        => sender ! BFABlockerStatus.Open // For debugging
-    case Tick             =>
     case _: BFAMessage[T] => sender ! Future.fromTry(failedResponse)
   }
 
@@ -62,15 +61,16 @@ private[guard] class BFABlocker[T, R](
 
     case Tick =>
       if (failureCount > maxFailures) {
-        log.debug("Become an open status.")
+        log.debug("become an open")
         context.become(open)
         context.system.scheduler.scheduleOnce(resetTimeout) {
           createSchedule
-          context.stop(self)
+          log.debug("become a closed to 0")
+          context.become(closed(0))
         }
       } else {
-        log.debug("Become a close 0.")
-        context.become(closed(0))
+        log.debug("actor stop")
+        context.stop(self)
       }
 
     case msg: BFAMessage[T] =>
@@ -82,13 +82,11 @@ private[guard] class BFABlocker[T, R](
       }
       future.onComplete {
         case Failure(ex) =>
-          log.debug("failure count is [{}]. cause message is [{}]", failureCount + 1, Option(ex.getMessage))
+          log.debug("failure count is [{}]. cause '{}'", failureCount + 1, Option(ex.getMessage))
           context.become(closed(failureCount + 1))
         case Success(_) =>
           context.become(closed(0))
       }
-      //      import akka.pattern.pipe
-      //      future.pipeTo(sender)
       sender ! future
   }
 
