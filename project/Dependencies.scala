@@ -29,7 +29,7 @@ object ScalaCheck {
 }
 
 object Akka {
-  val version           = "2.5.17"
+  val version           = "2.5.12"
   val actor: ModuleID   = "com.typesafe.akka" %% "akka-actor" % version
   val testKit: ModuleID = "com.typesafe.akka" %% "akka-testkit" % version
 }
