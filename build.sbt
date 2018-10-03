@@ -71,7 +71,7 @@ val commonSettings = Seq(
   }
 )
 
-lazy val `akka-guard-actor` = (project in file("akka-guard"))
+lazy val `akka-guard-actor` = (project in file("akka-guard-actor"))
   .settings(commonSettings: _*)
   .settings(
     name := "akka-guard-actor"
