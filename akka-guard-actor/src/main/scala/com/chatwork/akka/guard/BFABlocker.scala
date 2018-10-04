@@ -52,8 +52,8 @@ class BFABlocker[T, R](
     context.system.scheduler.scheduleOnce(failureTimeout, self, Tick)
 
   private val open: Receive = {
-    case GetStatus       => sender ! BFABlockerStatus.Open // For debugging
-    case Tick            =>
+    case GetStatus  => sender ! BFABlockerStatus.Open // For debugging
+    case Tick       =>
     case _: Message => sender ! Future.fromTry(failedResponse)
   }
 
