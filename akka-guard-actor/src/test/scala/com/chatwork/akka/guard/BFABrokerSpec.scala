@@ -32,7 +32,8 @@ class BFABrokerSpec
     maxFailures = 9,
     failureTimeout = 10.seconds,
     resetTimeout = 1.hour,
-    failedResponse = Failure(new Exception(failedMessage))
+    failedResponse = Failure(new Exception(failedMessage)),
+    isFailed = _ => false
   )
   val handler: String => Future[String] = {
     case request if request.length < BoundaryLength  => Future.failed(new Exception(errorMessage))
@@ -68,10 +69,6 @@ class BFABrokerSpec
         val message = BFAMessage(messageId, value, handler)
         (bfaBroker1 ? message).mapTo[Future[String]].futureValue.failed.futureValue.getMessage shouldBe errorMessage
       }
-
-      // TODO I want to make it unnecessary to tick here
-      And("Tick")
-      messageRef ! BFABlocker.Tick
 
       When("Short input")
       Then("return failed message")

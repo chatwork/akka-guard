@@ -16,6 +16,7 @@ object BFABlocker {
       failureTimeout = config.failureTimeout,
       resetTimeout = config.resetTimeout,
       failedResponse = config.failedResponse,
+      isFailed = config.isFailed,
       receiveTimeout = config.receiveTimeout,
       eventHandler = config.eventHandler
     )
@@ -33,6 +34,7 @@ class BFABlocker[T, R](
     failureTimeout: FiniteDuration,
     resetTimeout: FiniteDuration,
     failedResponse: => Try[R],
+    isFailed: R => Boolean,
     receiveTimeout: Option[Duration] = None,
     eventHandler: Option[BFABlockerStatus => Unit] = None
 ) extends Actor
@@ -57,11 +59,21 @@ class BFABlocker[T, R](
     case _: Message => sender ! Future.fromTry(failedResponse)
   }
 
+  private val isFailover: Long => Boolean = _ > this.maxFailures
+
+  private def doFail(count: Long): Unit = {
+    log.debug("failure count is [{}].", count)
+    context.become(closed(count))
+    if (isFailover(count)) self ! Tick
+  }
+
+  private def fail(failureCount: Long): Unit = doFail(failureCount + 1)
+
   private def closed(failureCount: Long): Receive = {
     case GetStatus => sender ! BFABlockerStatus.Closed // For debugging
 
     case Tick =>
-      if (failureCount > maxFailures) {
+      if (isFailover(failureCount)) {
         log.debug("become an open")
         context.become(open)
         context.system.scheduler.scheduleOnce(resetTimeout) {
@@ -82,11 +94,9 @@ class BFABlocker[T, R](
           Future.failed(cause)
       }
       future.onComplete {
-        case Failure(ex) =>
-          log.debug("failure count is [{}]. cause '{}'", failureCount + 1, Option(ex.getMessage))
-          context.become(closed(failureCount + 1))
-        case Success(_) =>
-          context.become(closed(0))
+        case Failure(_)                 => fail(failureCount)
+        case Success(r) if isFailed(r)  => fail(failureCount)
+        case Success(r) if !isFailed(r) => context.become(closed(0))
       }
       sender ! future
   }

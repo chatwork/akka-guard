@@ -8,6 +8,7 @@ case class BFABrokerConfig[T, R](
     failureTimeout: FiniteDuration,
     resetTimeout: FiniteDuration,
     failedResponse: Try[R],
+    isFailed: R => Boolean,
     receiveTimeout: Option[Duration] = None,
     eventHandler: Option[BFABlockerStatus => Unit] = None
 )
