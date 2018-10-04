@@ -20,7 +20,7 @@ trait BFABlockerDirectives {
   protected val bfaActorName: String = "BFABroker"
 
   private lazy val bfaBroker: BFABroker[T, R] = new BFABroker(bfaConfig)
-  private lazy val props                      = Props(bfaBroker)
+  private lazy val props: Props               = Props(bfaBroker)
   private lazy val bfaBrokerRef: ActorRef     = bfaActorSystem.actorOf(props, bfaActorName)
 
   def bfaBlocker(id: String, timeout: Timeout = Timeout(3.seconds)): Directive0 =

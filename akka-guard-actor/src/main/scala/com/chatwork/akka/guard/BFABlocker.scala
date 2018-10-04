@@ -37,13 +37,12 @@ class BFABlocker[T, R](
     eventHandler: Option[BFABlockerStatus => Unit] = None
 ) extends Actor
     with ActorLogging {
-
   import BFABlocker._
   import context.dispatcher
 
-  type GuardMessage = BFAMessage[T, R]
+  type Message = BFAMessage[T, R]
 
-  // receiveTimeout.foreach(context.setReceiveTimeout)
+  receiveTimeout.foreach(context.setReceiveTimeout)
 
   override def preStart: Unit = {
     createSchedule
@@ -55,7 +54,7 @@ class BFABlocker[T, R](
   private val open: Receive = {
     case GetStatus       => sender ! BFABlockerStatus.Open // For debugging
     case Tick            =>
-    case _: GuardMessage => sender ! Future.fromTry(failedResponse)
+    case _: Message => sender ! Future.fromTry(failedResponse)
   }
 
   private def closed(failureCount: Long): Receive = {
@@ -75,7 +74,7 @@ class BFABlocker[T, R](
         context.stop(self)
       }
 
-    case msg: GuardMessage =>
+    case msg: Message =>
       val future = try {
         msg.execute
       } catch {
