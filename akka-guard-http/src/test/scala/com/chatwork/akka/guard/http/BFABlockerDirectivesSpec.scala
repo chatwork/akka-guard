@@ -54,6 +54,9 @@ class BFABlockerDirectivesSpec extends FreeSpec with Matchers with ScalatestRout
     }
   }
 
+  val rejectionHandler: RejectionHandler =
+    RejectionHandler.default
+
   trait WithFixture extends BFABlockerDirectives {
     override protected val bfaActorSystem: ActorSystem = system
     override protected val bfaConfig: BFABrokerConfig[Unit, RouteResult] =
@@ -63,16 +66,17 @@ class BFABlockerDirectivesSpec extends FreeSpec with Matchers with ScalatestRout
         resetTimeout = 1.hour,
         failedResponse = Failure(new Exception("failed!!")),
         isFailed = {
-          case RouteResult.Complete(response) if response.status == StatusCodes.OK => false
-          case RouteResult.Rejected(rejections)                                    => true
-          case _                                                                   => true
+          case RouteResult.Complete(res) if res.status == StatusCodes.OK => false
+          case RouteResult.Rejected(rejections)                          => rejectionHandler(rejections).isDefined
+          case _                                                         => true
         }
       )
     val messagePath: ActorPath     = system / bfaActorName / BFABlocker.name(clientId)
     val messageRef: ActorSelection = system.actorSelection(messagePath)
 
-    val ok  = "ok"
-    val bad = "bad"
+    val ok   = "ok"
+    val bad  = "bad"
+    val reje = "reject"
     val routes: Route =
       get {
         path(ok / Segment) { id =>
@@ -83,6 +87,11 @@ class BFABlockerDirectivesSpec extends FreeSpec with Matchers with ScalatestRout
         path(bad / Segment) { id =>
           bfaBlocker(id) {
             complete(HttpResponse(StatusCodes.BadRequest))
+          }
+        } ~
+        path(reje / Segment) { id =>
+          bfaBlocker(id) {
+            reject(ValidationRejection("hoge"))
           }
         }
       }
