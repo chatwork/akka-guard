@@ -16,7 +16,6 @@ private[guard] object BFABlocker {
       failureTimeout = config.failureTimeout,
       resetTimeout = config.resetTimeout,
       failedResponse = config.failedResponse,
-      f = config.f,
       receiveTimeout = config.receiveTimeout,
       eventHandler = config.eventHandler
     )
@@ -34,13 +33,15 @@ private[guard] class BFABlocker[T, R](
     failureTimeout: FiniteDuration,
     resetTimeout: FiniteDuration,
     failedResponse: => Try[R],
-    f: BFAMessage[T] => Future[R],
     receiveTimeout: Option[Duration] = None,
     eventHandler: Option[BFABlockerStatus => Unit] = None
 ) extends Actor
     with ActorLogging {
+
   import BFABlocker._
   import context.dispatcher
+
+  type GuardMessage = BFAMessage[T, R]
 
   // receiveTimeout.foreach(context.setReceiveTimeout)
 
@@ -52,8 +53,9 @@ private[guard] class BFABlocker[T, R](
     context.system.scheduler.scheduleOnce(failureTimeout, self, Tick)
 
   private val open: Receive = {
-    case GetStatus        => sender ! BFABlockerStatus.Open // For debugging
-    case _: BFAMessage[T] => sender ! Future.fromTry(failedResponse)
+    case GetStatus       => sender ! BFABlockerStatus.Open // For debugging
+    case Tick            =>
+    case _: GuardMessage => sender ! Future.fromTry(failedResponse)
   }
 
   private def closed(failureCount: Long): Receive = {
@@ -73,9 +75,9 @@ private[guard] class BFABlocker[T, R](
         context.stop(self)
       }
 
-    case msg: BFAMessage[T] =>
+    case msg: GuardMessage =>
       val future = try {
-        f(msg)
+        msg.execute
       } catch {
         case NonFatal(cause) =>
           Future.failed(cause)

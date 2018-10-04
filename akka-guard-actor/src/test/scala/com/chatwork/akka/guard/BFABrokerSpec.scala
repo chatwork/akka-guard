@@ -32,12 +32,13 @@ class BFABrokerSpec
     maxFailures = 9,
     failureTimeout = 10.seconds,
     resetTimeout = 1.hour,
-    failedResponse = Failure(new Exception(failedMessage)),
-    f = {
-      case BFAMessage(_, request) if request.length < BoundaryLength  => Future.failed(new Exception(errorMessage))
-      case BFAMessage(_, request) if request.length >= BoundaryLength => Future.successful(successMessage)
-    }
+    failedResponse = Failure(new Exception(failedMessage))
   )
+  val handler: String => Future[String] = {
+    case request if request.length < BoundaryLength  => Future.failed(new Exception(errorMessage))
+    case request if request.length >= BoundaryLength => Future.successful(successMessage)
+  }
+
   feature("BFABrokerSpec") {
 
     scenario("Success") {
@@ -53,7 +54,7 @@ class BFABrokerSpec
       When("Long input")
       Then("return success message")
       forAll(genLongStr) { value =>
-        val message = BFAMessage(messageId, value)
+        val message = BFAMessage(messageId, value, handler)
         (bfaBroker1 ? message).mapTo[Future[String]].futureValue.futureValue shouldBe successMessage
       }
 
@@ -64,7 +65,7 @@ class BFABrokerSpec
       When("Short input")
       Then("return error message")
       forAll(genShortStr) { value =>
-        val message = BFAMessage(messageId, value)
+        val message = BFAMessage(messageId, value, handler)
         (bfaBroker1 ? message).mapTo[Future[String]].futureValue.failed.futureValue.getMessage shouldBe errorMessage
       }
 
@@ -74,7 +75,7 @@ class BFABrokerSpec
       When("Short input")
       Then("return failed message")
       forAll(genShortStr) { value =>
-        val message = BFAMessage(messageId, value)
+        val message = BFAMessage(messageId, value, handler)
         (bfaBroker1 ? message).mapTo[Future[String]].futureValue.failed.futureValue.getMessage shouldBe failedMessage
       }
 
