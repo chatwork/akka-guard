@@ -1,13 +1,14 @@
 package com.chatwork.akka.guard.http
 
-import akka.actor.{ ActorRef, ActorSystem, Props }
-import akka.http.scaladsl.model.{ HttpEntity, HttpResponse, StatusCodes }
+import akka.actor.{ ActorPath, ActorSelection, ActorSystem }
+import akka.http.scaladsl.model.{ HttpEntity, StatusCodes }
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import akka.pattern.ask
 import akka.stream.scaladsl.Sink
 import akka.util.Timeout
-import com.chatwork.akka.guard.{ BFABroker, BFABrokerConfig }
+import com.chatwork.akka.guard.{ BFABlocker, BFABlockerStatus, BFABrokerConfig }
 import org.scalacheck.Gen
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.prop.PropertyChecks
@@ -26,27 +27,44 @@ class BFABlockerDirectivesSpec
   val BoundaryLength           = 50
   val genShortStr: Gen[String] = Gen.listOf(Gen.asciiChar).map(_.mkString).suchThat(_.length < BoundaryLength)
   val genLongStr: Gen[String]  = Gen.listOf(Gen.asciiChar).map(_.mkString).suchThat(_.length >= BoundaryLength)
-
-  val bfaConfig: BFABrokerConfig[Unit, RouteResult] =
-    BFABrokerConfig(
-      maxFailures = 9,
-      failureTimeout = 10.seconds,
-      resetTimeout = 1.hour,
-      failedResponse = Failure(new Exception("failed!!"))
-    )
+  val clientId                 = "id-1"
+  val uri                      = s"/login/$clientId"
 
   "BFABlockerDirectivesSpec" - {
     "Success" in new WithFixture {
       forAll(genLongStr) { value =>
-        Post("/login", HttpEntity.apply(value)) ~> loginRoute ~> check {
+        Post(uri, HttpEntity(value)) ~> loginRoute ~> check {
           status shouldBe StatusCodes.OK
         }
       }
       forAll(genShortStr) { value =>
-        Post("/login", HttpEntity.apply(value)) ~> loginRoute ~> check {
-          status shouldBe StatusCodes.BadRequest
+        Post(uri, HttpEntity(value)) ~> loginRoute ~> check {
+          status shouldBe StatusCodes.InternalServerError
         }
       }
+
+      implicit val timeout: Timeout  = Timeout(4.second)
+      val messagePath: ActorPath     = system / bfaActorName / BFABlocker.name(clientId)
+      val messageRef: ActorSelection = system.actorSelection(messagePath)
+
+      messageRef
+        .?(BFABlocker.GetStatus)
+        .mapTo[BFABlockerStatus]
+        .futureValue shouldBe BFABlockerStatus.Closed
+
+      // TODO I want to make it unnecessary to tick here
+      messageRef ! BFABlocker.Tick
+
+      forAll(genShortStr) { value =>
+        Post(uri, HttpEntity(value)) ~> loginRoute ~> check {
+          status shouldBe StatusCodes.InternalServerError
+        }
+      }
+
+      messageRef
+        .?(BFABlocker.GetStatus)
+        .mapTo[BFABlockerStatus]
+        .futureValue shouldBe BFABlockerStatus.Open
     }
   }
 
@@ -59,16 +77,15 @@ class BFABlockerDirectivesSpec
         resetTimeout = 1.hour,
         failedResponse = Failure(new Exception("failed!!"))
       )
-    override implicit val timeout: Timeout = Timeout(10.seconds)
 
     val loginRoute: Route =
       post {
-        path("login") {
+        path("login" / Segment) { id =>
           extractRequest { request =>
-            bfaBlocker("id") {
+            bfaBlocker(id) {
               val body = request.entity.dataBytes.runWith(Sink.head).futureValue
               if (body.utf8String.length < BoundaryLength) {
-                complete(HttpResponse(StatusCodes.BadRequest))
+                throw new RuntimeException("")
               } else {
                 complete("index")
               }

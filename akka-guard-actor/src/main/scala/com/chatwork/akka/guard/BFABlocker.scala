@@ -7,7 +7,7 @@ import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 
-private[guard] object BFABlocker {
+object BFABlocker {
 
   def props[T, R](id: String, config: BFABrokerConfig[T, R]): Props = Props(
     new BFABlocker[T, R](
@@ -27,7 +27,7 @@ private[guard] object BFABlocker {
   case object GetStatus
 }
 
-private[guard] class BFABlocker[T, R](
+class BFABlocker[T, R](
     id: String,
     maxFailures: Long,
     failureTimeout: FiniteDuration,

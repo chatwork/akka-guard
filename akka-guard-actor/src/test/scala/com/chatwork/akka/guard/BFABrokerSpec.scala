@@ -69,6 +69,7 @@ class BFABrokerSpec
         (bfaBroker1 ? message).mapTo[Future[String]].futureValue.failed.futureValue.getMessage shouldBe errorMessage
       }
 
+      // TODO I want to make it unnecessary to tick here
       And("Tick")
       messageRef ! BFABlocker.Tick
 
