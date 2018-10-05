@@ -22,8 +22,8 @@ class BFABrokerSpec
     with ScalaFutures {
 
   val BoundaryLength           = 50
-  val genShortStr: Gen[String] = Gen.listOf(Gen.asciiChar).map(_.mkString).suchThat(_.length < BoundaryLength)
-  val genLongStr: Gen[String]  = Gen.listOf(Gen.asciiChar).map(_.mkString).suchThat(_.length >= BoundaryLength)
+  val genShortStr: Gen[String] = Gen.asciiStr.suchThat(_.length < BoundaryLength)
+  val genLongStr: Gen[String]  = Gen.asciiStr.suchThat(_.length >= BoundaryLength)
 
   val failedMessage  = "failed!!"
   val errorMessage   = "error!!"
