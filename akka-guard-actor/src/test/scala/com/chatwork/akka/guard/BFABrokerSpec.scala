@@ -56,7 +56,7 @@ class BFABrokerSpec
       Then("return success message")
       forAll(genLongStr) { value =>
         val message = BFAMessage(messageId, value, handler)
-        (bfaBroker1 ? message).mapTo[Future[String]].futureValue.futureValue shouldBe successMessage
+        (bfaBroker1 ? message).mapTo[String].futureValue shouldBe successMessage
       }
 
       And("Status Closed")
@@ -67,14 +67,14 @@ class BFABrokerSpec
       Then("return error message")
       forAll(genShortStr) { value =>
         val message = BFAMessage(messageId, value, handler)
-        (bfaBroker1 ? message).mapTo[Future[String]].futureValue.failed.futureValue.getMessage shouldBe errorMessage
+        (bfaBroker1 ? message).mapTo[String].failed.futureValue.getMessage shouldBe errorMessage
       }
 
       When("Short input")
       Then("return failed message")
       forAll(genShortStr) { value =>
         val message = BFAMessage(messageId, value, handler)
-        (bfaBroker1 ? message).mapTo[Future[String]].futureValue.failed.futureValue.getMessage shouldBe failedMessage
+        (bfaBroker1 ? message).mapTo[String].failed.futureValue.getMessage shouldBe failedMessage
       }
 
       And("Status Open")

@@ -1,6 +1,7 @@
 package com.chatwork.akka.guard
 
 import akka.actor._
+import akka.pattern.pipe
 
 import scala.concurrent._
 import scala.concurrent.duration._
@@ -53,10 +54,13 @@ class BFABlocker[T, R](
   private def createSchedule: Cancellable =
     context.system.scheduler.scheduleOnce(failureTimeout, self, Tick)
 
+  private def reply(future: Future[R]) =
+    future.pipeTo(sender)
+
   private val open: Receive = {
     case GetStatus  => sender ! BFABlockerStatus.Open // For debugging
     case Tick       =>
-    case _: Message => sender ! Future.fromTry(failedResponse)
+    case _: Message => reply(Future.fromTry(failedResponse))
   }
 
   private val isFailover: Long => Boolean = _ > this.maxFailures
@@ -102,7 +106,7 @@ class BFABlocker[T, R](
         case Success(r) if isFailed(r)  => fail(failureCount)
         case Success(r) if !isFailed(r) => context.become(closed(0))
       }
-      sender ! future
+      reply(future)
   }
 
   override def receive: Receive = closed(0)
