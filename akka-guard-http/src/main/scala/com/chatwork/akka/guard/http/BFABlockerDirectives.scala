@@ -10,7 +10,7 @@ import scala.concurrent.duration._
 trait BFABlockerDirectives {
   import BFABlocker._
 
-  def bfaBlocker(id: String, bfaBlocker: BFABlocker, timeout: Timeout = Timeout(3.seconds)): Directive0 =
+  def bfaBlocker(bfaBlocker: BFABlocker, timeout: Timeout = Timeout(3.seconds))(id: String): Directive0 =
     Directive[T] { inner => ctx =>
       val message: BFAMessage[T, R] = BFAMessage(id, (), a => inner(a)(ctx))
       bfaBlocker.actorRef.ask(message)(timeout).mapTo[R]

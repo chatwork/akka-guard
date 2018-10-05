@@ -74,6 +74,7 @@ class BFABlockerActorDirectivesSpec extends FreeSpec with Matchers with Scalates
       )
 
     val blocker: BFABlocker = BFABlocker(system, bfaConfig)
+    val myBlocker: String => Directive0 = bfaBlocker(blocker)
 
     val messagePath: ActorPath     = system / blocker.actorName / BFABlockerActor.name(clientId)
     val messageRef: ActorSelection = system.actorSelection(messagePath)
@@ -84,17 +85,17 @@ class BFABlockerActorDirectivesSpec extends FreeSpec with Matchers with Scalates
     val routes: Route =
       get {
         path(ok / Segment) { id =>
-          bfaBlocker(id, blocker) {
+          myBlocker(id) {
             complete("index")
           }
         } ~
         path(bad / Segment) { id =>
-          bfaBlocker(id, blocker) {
+          myBlocker(id) {
             complete(HttpResponse(StatusCodes.BadRequest))
           }
         } ~
         path(rej / Segment) { id =>
-          bfaBlocker(id, blocker) {
+          myBlocker(id) {
             reject(ValidationRejection("hoge"))
           }
         }
