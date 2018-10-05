@@ -8,7 +8,7 @@ class BFABroker[T, R](config: BFABrokerConfig[T, R]) extends Actor {
   override def receive: Receive = {
     case msg: GuardMessage =>
       context
-        .child(BFABlocker.name(msg.id))
+        .child(BFABlockerActor.name(msg.id))
         .fold(createAndForward(msg, msg.id))(forwardMsg(msg))
   }
 
@@ -16,7 +16,7 @@ class BFABroker[T, R](config: BFABrokerConfig[T, R]) extends Actor {
     childRef forward msg
 
   private def createBFABlocker(id: String): ActorRef =
-    context.actorOf(BFABlocker.props(id, config), BFABlocker.name(id))
+    context.actorOf(BFABlockerActor.props(id, config), BFABlockerActor.name(id))
 
   private def createAndForward(msg: GuardMessage, id: String): Unit =
     forwardMsg(msg)(createBFABlocker(id))

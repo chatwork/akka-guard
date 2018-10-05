@@ -8,10 +8,10 @@ import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 
-object BFABlocker {
+object BFABlockerActor {
 
   def props[T, R](id: String, config: BFABrokerConfig[T, R]): Props = Props(
-    new BFABlocker[T, R](
+    new BFABlockerActor[T, R](
       id = id,
       maxFailures = config.maxFailures,
       failureTimeout = config.failureTimeout,
@@ -29,7 +29,7 @@ object BFABlocker {
   case object GetStatus
 }
 
-class BFABlocker[T, R](
+class BFABlockerActor[T, R](
     id: String,
     maxFailures: Long,
     failureTimeout: FiniteDuration,
@@ -40,7 +40,7 @@ class BFABlocker[T, R](
     eventHandler: Option[BFABlockerStatus => Unit] = None
 ) extends Actor
     with ActorLogging {
-  import BFABlocker._
+  import BFABlockerActor._
   import context.dispatcher
 
   type Message = BFAMessage[T, R]

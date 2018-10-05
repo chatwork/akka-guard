@@ -49,7 +49,7 @@ class BFABrokerSpec
       val bfaBrokerName1: String     = "broker-1"
       val messageId: String          = "id-1"
       val bfaBroker1: ActorRef       = system.actorOf(Props(new BFABroker(config)), bfaBrokerName1)
-      val messagePath: ActorPath     = system / bfaBrokerName1 / BFABlocker.name(messageId)
+      val messagePath: ActorPath     = system / bfaBrokerName1 / BFABlockerActor.name(messageId)
       val messageRef: ActorSelection = system.actorSelection(messagePath)
 
       When("Long input")
@@ -60,7 +60,7 @@ class BFABrokerSpec
       }
 
       And("Status Closed")
-      (messageRef ? BFABlocker.GetStatus)
+      (messageRef ? BFABlockerActor.GetStatus)
         .mapTo[BFABlockerStatus].futureValue shouldBe BFABlockerStatus.Closed
 
       When("Short input")
@@ -78,7 +78,7 @@ class BFABrokerSpec
       }
 
       And("Status Open")
-      (messageRef ? BFABlocker.GetStatus)
+      (messageRef ? BFABlockerActor.GetStatus)
         .mapTo[BFABlockerStatus].futureValue shouldBe BFABlockerStatus.Open
     }
 

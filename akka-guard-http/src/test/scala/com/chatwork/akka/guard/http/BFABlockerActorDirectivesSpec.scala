@@ -1,20 +1,20 @@
 package com.chatwork.akka.guard.http
 
-import akka.actor.{ ActorPath, ActorSelection, ActorSystem }
+import akka.actor.{ ActorPath, ActorSelection }
 import akka.http.scaladsl.model.{ HttpResponse, StatusCodes }
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.pattern.ask
 import akka.util.Timeout
-import com.chatwork.akka.guard.{ BFABlocker, BFABlockerStatus, BFABrokerConfig }
+import com.chatwork.akka.guard.{ BFABlockerActor, BFABlockerStatus, BFABrokerConfig }
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ FreeSpec, Matchers }
 
 import scala.concurrent.duration._
 import scala.util.Failure
 
-class BFABlockerDirectivesSpec extends FreeSpec with Matchers with ScalatestRouteTest with ScalaFutures {
+class BFABlockerActorDirectivesSpec extends FreeSpec with Matchers with ScalatestRouteTest with ScalaFutures {
 
   implicit val timeout: Timeout = Timeout(4.second)
   val clientId                  = "id-1"
@@ -30,7 +30,7 @@ class BFABlockerDirectivesSpec extends FreeSpec with Matchers with ScalatestRout
       }
 
       messageRef
-        .?(BFABlocker.GetStatus)
+        .?(BFABlockerActor.GetStatus)
         .mapTo[BFABlockerStatus]
         .futureValue shouldBe BFABlockerStatus.Closed
 
@@ -41,7 +41,7 @@ class BFABlockerDirectivesSpec extends FreeSpec with Matchers with ScalatestRout
       }
 
       messageRef
-        .?(BFABlocker.GetStatus)
+        .?(BFABlockerActor.GetStatus)
         .mapTo[BFABlockerStatus]
         .futureValue shouldBe BFABlockerStatus.Open
 
@@ -57,9 +57,10 @@ class BFABlockerDirectivesSpec extends FreeSpec with Matchers with ScalatestRout
   val rejectionHandler: RejectionHandler =
     RejectionHandler.default
 
-  trait WithFixture extends BFABlockerDirectives {
-    override protected val bfaActorSystem: ActorSystem = system
-    override protected val bfaConfig: BFABrokerConfig[Unit, RouteResult] =
+  trait WithFixture {
+    import BFABlockerDirectives._
+
+    val bfaConfig: BFABrokerConfig[Unit, RouteResult] =
       BFABrokerConfig(
         maxFailures = 9,
         failureTimeout = 10.seconds,
@@ -71,26 +72,29 @@ class BFABlockerDirectivesSpec extends FreeSpec with Matchers with ScalatestRout
           case _                                                         => true
         }
       )
-    val messagePath: ActorPath     = system / bfaActorName / BFABlocker.name(clientId)
+
+    val blocker: BFABlocker = BFABlocker(system, bfaConfig)
+
+    val messagePath: ActorPath     = system / blocker.actorName / BFABlockerActor.name(clientId)
     val messageRef: ActorSelection = system.actorSelection(messagePath)
 
-    val ok   = "ok"
-    val bad  = "bad"
-    val reje = "reject"
+    val ok  = "ok"
+    val bad = "bad"
+    val rej = "reject"
     val routes: Route =
       get {
         path(ok / Segment) { id =>
-          bfaBlocker(id) {
+          bfaBlocker(id, blocker) {
             complete("index")
           }
         } ~
         path(bad / Segment) { id =>
-          bfaBlocker(id) {
+          bfaBlocker(id, blocker) {
             complete(HttpResponse(StatusCodes.BadRequest))
           }
         } ~
-        path(reje / Segment) { id =>
-          bfaBlocker(id) {
+        path(rej / Segment) { id =>
+          bfaBlocker(id, blocker) {
             reject(ValidationRejection("hoge"))
           }
         }
