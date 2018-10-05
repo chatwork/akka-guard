@@ -73,7 +73,7 @@ class BFABlockerActorDirectivesSpec extends FreeSpec with Matchers with Scalates
         }
       )
 
-    val blocker: BFABlocker = BFABlocker(system, bfaConfig)
+    val blocker: BFABlocker             = BFABlocker(system, bfaConfig)
     val myBlocker: String => Directive0 = bfaBlocker(blocker)
 
     val messagePath: ActorPath     = system / blocker.actorName / BFABlockerActor.name(clientId)
