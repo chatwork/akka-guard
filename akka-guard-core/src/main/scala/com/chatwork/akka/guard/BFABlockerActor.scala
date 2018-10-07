@@ -25,7 +25,7 @@ object BFABlockerActor {
 
   def name(id: String): String = s"BFABlocker-$id"
 
-  case object Tick
+  private[guard] case object Tick
   case object GetStatus
 }
 
