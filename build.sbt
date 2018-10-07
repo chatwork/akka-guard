@@ -71,10 +71,10 @@ val commonSettings = Seq(
   }
 )
 
-lazy val `akka-guard-actor` = (project in file("akka-guard-actor"))
+lazy val `akka-guard-core` = (project in file("akka-guard-core"))
   .settings(commonSettings: _*)
   .settings(
-    name := "akka-guard-actor"
+    name := "akka-guard-core"
   )
 
 lazy val `akka-guard-http` = (project in file("akka-guard-http"))
@@ -86,11 +86,11 @@ lazy val `akka-guard-http` = (project in file("akka-guard-http"))
       AkkaHttp.http
     )
   )
-  .dependsOn(`akka-guard-actor`)
+  .dependsOn(`akka-guard-core`)
 
 lazy val root = (project in file("."))
   .settings(commonSettings: _*)
   .settings(
     name := "akka-guard"
   )
-  .aggregate(`akka-guard-actor`, `akka-guard-http`)
+  .aggregate(`akka-guard-core`, `akka-guard-http`)
