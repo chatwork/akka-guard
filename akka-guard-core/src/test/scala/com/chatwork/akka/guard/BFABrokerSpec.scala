@@ -16,6 +16,7 @@ import scala.util.Failure
 class BFABrokerSpec
     extends TestKit(ActorSystem("BFABrokerSpec"))
     with FeatureSpecLike
+    with BeforeAndAfterAll
     with GivenWhenThen
     with PropertyChecks
     with Matchers
@@ -82,5 +83,9 @@ class BFABrokerSpec
         .mapTo[BFABlockerStatus].futureValue shouldBe BFABlockerStatus.Open
     }
 
+  }
+
+  override protected def afterAll(): Unit = {
+    shutdown()
   }
 }

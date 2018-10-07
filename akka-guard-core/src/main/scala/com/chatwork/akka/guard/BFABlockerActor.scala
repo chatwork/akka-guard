@@ -30,14 +30,14 @@ object BFABlockerActor {
 }
 
 class BFABlockerActor[T, R](
-    id: String,
+    id: ID,
     maxFailures: Long,
     failureTimeout: FiniteDuration,
     resetTimeout: FiniteDuration,
     failedResponse: => Try[R],
     isFailed: R => Boolean,
-    receiveTimeout: Option[Duration] = None,
-    eventHandler: Option[BFABlockerStatus => Unit] = None
+    receiveTimeout: Option[Duration],
+    eventHandler: Option[(ID, BFABlockerStatus) => Unit]
 ) extends Actor
     with ActorLogging {
   import BFABlockerActor._
@@ -54,8 +54,7 @@ class BFABlockerActor[T, R](
   private def createSchedule: Cancellable =
     context.system.scheduler.scheduleOnce(failureTimeout, self, Tick)
 
-  private def reply(future: Future[R]) =
-    future.pipeTo(sender)
+  private def reply(future: Future[R]) = future.pipeTo(sender)
 
   private val open: Receive = {
     case GetStatus  => sender ! BFABlockerStatus.Open // For debugging
@@ -63,11 +62,24 @@ class BFABlockerActor[T, R](
     case _: Message => reply(Future.fromTry(failedResponse))
   }
 
+  private def becomeOpen(): Unit = {
+    log.debug("become an open")
+    context.become(open)
+    context.system.scheduler.scheduleOnce(resetTimeout)(reset())
+    eventHandler.foreach(_.apply(id, BFABlockerStatus.Open))
+  }
+
+  private def becomeClosed(count: Long): Unit = {
+    log.debug(s"become a closed to $count")
+    context.become(closed(count))
+    eventHandler.foreach(_.apply(id, BFABlockerStatus.Closed))
+  }
+
   private val isFailover: Long => Boolean = _ > this.maxFailures
 
   private def doFail(count: Long): Unit = {
     log.debug("failure count is [{}].", count)
-    context.become(closed(count))
+    becomeClosed(count)
     if (isFailover(count)) self ! Tick
   }
 
@@ -75,25 +87,17 @@ class BFABlockerActor[T, R](
 
   private def reset(): Unit = {
     createSchedule
-    log.debug("become a closed to 0")
-    context.become(closed(0))
-  }
-
-  private def becomeOpen(): Unit = {
-    log.debug("become an open")
-    context.become(open)
-    context.system.scheduler.scheduleOnce(resetTimeout)(reset())
+    becomeClosed(0)
   }
 
   private def closed(failureCount: Long): Receive = {
     case GetStatus => sender ! BFABlockerStatus.Closed // For debugging
 
     case Tick =>
-      if (isFailover(failureCount)) {
+      if (isFailover(failureCount))
         becomeOpen()
-      } else {
+      else
         reset()
-      }
 
     case msg: Message =>
       val future = try {
@@ -104,7 +108,7 @@ class BFABlockerActor[T, R](
       future.onComplete {
         case Failure(_)                 => fail(failureCount)
         case Success(r) if isFailed(r)  => fail(failureCount)
-        case Success(r) if !isFailed(r) => context.become(closed(0))
+        case Success(r) if !isFailed(r) => becomeClosed(0)
       }
       reply(future)
   }

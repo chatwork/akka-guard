@@ -10,5 +10,5 @@ case class BFABrokerConfig[T, R](
     failedResponse: Try[R],
     isFailed: R => Boolean,
     receiveTimeout: Option[Duration] = None,
-    eventHandler: Option[BFABlockerStatus => Unit] = None
+    eventHandler: Option[(ID, BFABlockerStatus) => Unit] = None
 )
