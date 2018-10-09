@@ -13,8 +13,8 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.Failure
 
-class BFABrokerSpec
-    extends TestKit(ActorSystem("BFABrokerSpec"))
+class SABBrokerSpec
+    extends TestKit(ActorSystem("SABBrokerSpec"))
     with FeatureSpecLike
     with BeforeAndAfterAll
     with GivenWhenThen
@@ -29,7 +29,7 @@ class BFABrokerSpec
   val failedMessage  = "failed!!"
   val errorMessage   = "error!!"
   val successMessage = "success!!"
-  val config: BFABrokerConfig[String, String] = BFABrokerConfig[String, String](
+  val config: SABBrokerConfig[String, String] = SABBrokerConfig[String, String](
     maxFailures = 9,
     failureTimeout = 10.seconds,
     resetTimeout = 1.hour,
@@ -41,46 +41,46 @@ class BFABrokerSpec
     case request if request.length >= BoundaryLength => Future.successful(successMessage)
   }
 
-  feature("BFABrokerSpec") {
+  feature("SABBrokerSpec") {
 
     scenario("Success") {
 
       Given("broker pattern 1")
       implicit val timeout: Timeout  = Timeout(5.seconds)
-      val bfaBrokerName1: String     = "broker-1"
+      val sabBrokerName1: String     = "broker-1"
       val messageId: String          = "id-1"
-      val bfaBroker1: ActorRef       = system.actorOf(Props(new BFABroker(config)), bfaBrokerName1)
-      val messagePath: ActorPath     = system / bfaBrokerName1 / BFABlockerActor.name(messageId)
+      val sabBroker1: ActorRef       = system.actorOf(Props(new SABBroker(config)), sabBrokerName1)
+      val messagePath: ActorPath     = system / sabBrokerName1 / ServiceAttackBlockerActor.name(messageId)
       val messageRef: ActorSelection = system.actorSelection(messagePath)
 
       When("Long input")
       Then("return success message")
       forAll(genLongStr) { value =>
-        val message = BFAMessage(messageId, value, handler)
-        (bfaBroker1 ? message).mapTo[String].futureValue shouldBe successMessage
+        val message = SABMessage(messageId, value, handler)
+        (sabBroker1 ? message).mapTo[String].futureValue shouldBe successMessage
       }
 
       And("Status Closed")
-      (messageRef ? BFABlockerActor.GetStatus)
-        .mapTo[BFABlockerStatus].futureValue shouldBe BFABlockerStatus.Closed
+      (messageRef ? ServiceAttackBlockerActor.GetStatus)
+        .mapTo[ServiceAttackBlockerStatus].futureValue shouldBe ServiceAttackBlockerStatus.Closed
 
       When("Short input")
       Then("return error message")
       forAll(genShortStr) { value =>
-        val message = BFAMessage(messageId, value, handler)
-        (bfaBroker1 ? message).mapTo[String].failed.futureValue.getMessage shouldBe errorMessage
+        val message = SABMessage(messageId, value, handler)
+        (sabBroker1 ? message).mapTo[String].failed.futureValue.getMessage shouldBe errorMessage
       }
 
       When("Short input")
       Then("return failed message")
       forAll(genShortStr) { value =>
-        val message = BFAMessage(messageId, value, handler)
-        (bfaBroker1 ? message).mapTo[String].failed.futureValue.getMessage shouldBe failedMessage
+        val message = SABMessage(messageId, value, handler)
+        (sabBroker1 ? message).mapTo[String].failed.futureValue.getMessage shouldBe failedMessage
       }
 
       And("Status Open")
-      (messageRef ? BFABlockerActor.GetStatus)
-        .mapTo[BFABlockerStatus].futureValue shouldBe BFABlockerStatus.Open
+      (messageRef ? ServiceAttackBlockerActor.GetStatus)
+        .mapTo[ServiceAttackBlockerStatus].futureValue shouldBe ServiceAttackBlockerStatus.Open
     }
 
   }

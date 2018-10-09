@@ -1,20 +1,20 @@
 package com.chatwork.akka.guard.http
 import akka.actor.{ ActorRef, ActorSystem, Props }
 import akka.http.scaladsl.server.RouteResult
-import com.chatwork.akka.guard.{ BFABroker, BFABrokerConfig }
+import com.chatwork.akka.guard.{ SABBroker, SABBrokerConfig }
 
-case class BFABlocker(
+case class ServiceAttackBlocker(
     system: ActorSystem,
-    bfaConfig: BFABrokerConfig[Unit, RouteResult],
-    actorName: String = "BFABroker"
+    sabConfig: SABBrokerConfig[Unit, RouteResult],
+    actorName: String = "SABBroker"
 ) {
-  import BFABlocker._
-  private lazy val broker: BFABroker[T, R] = new BFABroker(bfaConfig)
+  import ServiceAttackBlocker._
+  private lazy val broker: SABBroker[T, R] = new SABBroker(sabConfig)
   private lazy val props: Props            = Props(broker)
   lazy val actorRef: ActorRef              = system.actorOf(props, actorName)
 }
 
-object BFABlocker {
+object ServiceAttackBlocker {
   type T = Unit
   type R = RouteResult
 }

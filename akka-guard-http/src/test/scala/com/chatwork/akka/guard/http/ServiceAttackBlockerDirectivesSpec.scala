@@ -7,20 +7,20 @@ import akka.http.scaladsl.server._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.pattern.ask
 import akka.util.Timeout
-import com.chatwork.akka.guard.{ BFABlockerActor, BFABlockerStatus, BFABrokerConfig }
+import com.chatwork.akka.guard.{ SABBrokerConfig, ServiceAttackBlockerActor, ServiceAttackBlockerStatus }
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ FreeSpec, Matchers }
 
 import scala.concurrent.duration._
 import scala.util.Failure
 
-class BFABlockerActorDirectivesSpec extends FreeSpec with Matchers with ScalatestRouteTest with ScalaFutures {
+class ServiceAttackBlockerDirectivesSpec extends FreeSpec with Matchers with ScalatestRouteTest with ScalaFutures {
 
   implicit val timeout: Timeout = Timeout(4.second)
   val clientId                  = "id-1"
   val uri: String => String     = prefix => s"/$prefix/$clientId"
 
-  "BFABlockerDirectivesSpec" - {
+  "ServiceAttackBlockerDirectivesSpec" - {
     "Success" in new WithFixture {
 
       (1 to 10).foreach { _ =>
@@ -30,9 +30,9 @@ class BFABlockerActorDirectivesSpec extends FreeSpec with Matchers with Scalates
       }
 
       messageRef
-        .?(BFABlockerActor.GetStatus)
-        .mapTo[BFABlockerStatus]
-        .futureValue shouldBe BFABlockerStatus.Closed
+        .?(ServiceAttackBlockerActor.GetStatus)
+        .mapTo[ServiceAttackBlockerStatus]
+        .futureValue shouldBe ServiceAttackBlockerStatus.Closed
 
       (1 to 10).foreach { _ =>
         Get(uri(bad)) ~> routes ~> check {
@@ -41,9 +41,9 @@ class BFABlockerActorDirectivesSpec extends FreeSpec with Matchers with Scalates
       }
 
       messageRef
-        .?(BFABlockerActor.GetStatus)
-        .mapTo[BFABlockerStatus]
-        .futureValue shouldBe BFABlockerStatus.Open
+        .?(ServiceAttackBlockerActor.GetStatus)
+        .mapTo[ServiceAttackBlockerStatus]
+        .futureValue shouldBe ServiceAttackBlockerStatus.Open
 
       (1 to 10).foreach { _ =>
         Get(uri(bad)) ~> routes ~> check {
@@ -58,10 +58,10 @@ class BFABlockerActorDirectivesSpec extends FreeSpec with Matchers with Scalates
     RejectionHandler.default
 
   trait WithFixture {
-    import BFABlockerDirectives._
+    import ServiceAttackBlockerDirectives._
 
-    val bfaConfig: BFABrokerConfig[Unit, RouteResult] =
-      BFABrokerConfig(
+    val sabConfig: SABBrokerConfig[Unit, RouteResult] =
+      SABBrokerConfig(
         maxFailures = 9,
         failureTimeout = 10.seconds,
         resetTimeout = 1.hour,
@@ -73,10 +73,10 @@ class BFABlockerActorDirectivesSpec extends FreeSpec with Matchers with Scalates
         }
       )
 
-    val blocker: BFABlocker             = BFABlocker(system, bfaConfig)
-    val myBlocker: String => Directive0 = bfaBlocker(blocker)
+    val blocker: ServiceAttackBlocker   = ServiceAttackBlocker(system, sabConfig)
+    val myBlocker: String => Directive0 = serviceAttackBlocker(blocker)
 
-    val messagePath: ActorPath     = system / blocker.actorName / BFABlockerActor.name(clientId)
+    val messagePath: ActorPath     = system / blocker.actorName / ServiceAttackBlockerActor.name(clientId)
     val messageRef: ActorSelection = system.actorSelection(messagePath)
 
     val ok  = "ok"
