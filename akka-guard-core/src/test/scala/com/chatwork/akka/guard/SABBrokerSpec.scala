@@ -11,7 +11,7 @@ import org.scalatest.prop.PropertyChecks
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.util.Failure
+import scala.util.{ Failure, Try }
 
 class SABBrokerSpec
     extends TestKit(ActorSystem("SABBrokerSpec"))
@@ -29,13 +29,13 @@ class SABBrokerSpec
   val failedMessage  = "failed!!"
   val errorMessage   = "error!!"
   val successMessage = "success!!"
-  val config: SABBrokerConfig[String, String] = SABBrokerConfig[String, String](
+  val config: SABBrokerConfig = SABBrokerConfig(
     maxFailures = 9,
     failureTimeout = 10.seconds,
-    resetTimeout = 1.hour,
-    failedResponse = Failure(new Exception(failedMessage)),
-    isFailed = _ => false
+    resetTimeout = 1.hour
   )
+  val failedResponse: Try[String] = Failure(new Exception(failedMessage))
+  val isFailed: String => Boolean = _ => false
   val handler: String => Future[String] = {
     case request if request.length < BoundaryLength  => Future.failed(new Exception(errorMessage))
     case request if request.length >= BoundaryLength => Future.successful(successMessage)
@@ -49,7 +49,7 @@ class SABBrokerSpec
       implicit val timeout: Timeout  = Timeout(5.seconds)
       val sabBrokerName1: String     = "broker-1"
       val messageId: String          = "id-1"
-      val sabBroker1: ActorRef       = system.actorOf(Props(new SABBroker(config)), sabBrokerName1)
+      val sabBroker1: ActorRef       = system.actorOf(Props(new SABBroker(config, failedResponse, isFailed)), sabBrokerName1)
       val messagePath: ActorPath     = system / sabBrokerName1 / ServiceAttackBlockerActor.name(messageId)
       val messageRef: ActorSelection = system.actorSelection(messagePath)
 

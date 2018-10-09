@@ -12,7 +12,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ FreeSpec, Matchers }
 
 import scala.concurrent.duration._
-import scala.util.Failure
+import scala.util.{ Failure, Try }
 
 class ServiceAttackBlockerDirectivesSpec extends FreeSpec with Matchers with ScalatestRouteTest with ScalaFutures {
 
@@ -60,20 +60,21 @@ class ServiceAttackBlockerDirectivesSpec extends FreeSpec with Matchers with Sca
   trait WithFixture {
     import ServiceAttackBlockerDirectives._
 
-    val sabConfig: SABBrokerConfig[Unit, RouteResult] =
+    val failedResponse: Try[RouteResult] = Failure(new Exception("failed!!"))
+    val isFailed: RouteResult => Boolean = {
+      case RouteResult.Complete(res) if res.status == StatusCodes.OK => false
+      case RouteResult.Rejected(rejections)                          => rejectionHandler(rejections).isDefined
+      case _                                                         => true
+    }
+
+    val sabConfig: SABBrokerConfig =
       SABBrokerConfig(
         maxFailures = 9,
         failureTimeout = 10.seconds,
-        resetTimeout = 1.hour,
-        failedResponse = Failure(new Exception("failed!!")),
-        isFailed = {
-          case RouteResult.Complete(res) if res.status == StatusCodes.OK => false
-          case RouteResult.Rejected(rejections)                          => rejectionHandler(rejections).isDefined
-          case _                                                         => true
-        }
+        resetTimeout = 1.hour
       )
 
-    val blocker: ServiceAttackBlocker   = ServiceAttackBlocker(system, sabConfig)
+    val blocker: ServiceAttackBlocker   = ServiceAttackBlocker(system, sabConfig)(failedResponse, isFailed)
     val myBlocker: String => Directive0 = serviceAttackBlocker(blocker)
 
     val messagePath: ActorPath     = system / blocker.actorName / ServiceAttackBlockerActor.name(clientId)

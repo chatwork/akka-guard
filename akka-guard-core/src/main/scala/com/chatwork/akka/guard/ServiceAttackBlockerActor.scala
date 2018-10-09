@@ -10,16 +10,20 @@ import scala.util.{ Failure, Success, Try }
 
 object ServiceAttackBlockerActor {
 
-  def props[T, R](id: String, config: SABBrokerConfig[T, R]): Props = Props(
+  def props[T, R](id: String,
+                  config: SABBrokerConfig,
+                  failedResponse: Try[R],
+                  isFailed: R => Boolean,
+                  eventHandler: Option[(ID, ServiceAttackBlockerStatus) => Unit] = None): Props = Props(
     new ServiceAttackBlockerActor[T, R](
       id = id,
       maxFailures = config.maxFailures,
       failureTimeout = config.failureTimeout,
       resetTimeout = config.resetTimeout,
-      failedResponse = config.failedResponse,
-      isFailed = config.isFailed,
+      failedResponse = failedResponse,
+      isFailed = isFailed,
       receiveTimeout = config.receiveTimeout,
-      eventHandler = config.eventHandler
+      eventHandler = eventHandler
     )
   )
 
