@@ -77,13 +77,12 @@ class BFABlockerActor[T, R](
 
   private val isFailover: Long => Boolean = _ > this.maxFailures
 
-  private def doFail(count: Long): Unit = {
+  private def fail(failureCount: Long): Unit = {
+    val count = failureCount + 1
     log.debug("failure count is [{}].", count)
     becomeClosed(count)
     if (isFailover(count)) self ! Tick
   }
-
-  private def fail(failureCount: Long): Unit = doFail(failureCount + 1)
 
   private def reset(): Unit = {
     createSchedule
