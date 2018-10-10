@@ -19,7 +19,7 @@ val updateReadme = { state: State =>
     .map { line =>
       val matchReleaseOrSnapshot = line.contains("SNAPSHOT") == v.contains("SNAPSHOT")
       if (line.startsWith("libraryDependencies") && matchReleaseOrSnapshot) {
-        s"""libraryDependencies += "${org}" %% "${n}" % "$v""""
+        s"""libraryDependencies += "${org}" %% "${n}-http" % "$v""""
       } else line
     }
     .mkString("", "\n", "\n")
