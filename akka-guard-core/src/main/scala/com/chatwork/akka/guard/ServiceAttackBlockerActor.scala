@@ -20,9 +20,10 @@ object ServiceAttackBlockerActor {
       maxFailures = config.maxFailures,
       failureTimeout = config.failureTimeout,
       resetTimeout = config.resetTimeout,
+      receiveTimeout = config.receiveTimeout,
+      isOneShot = config.isOneShot,
       failedResponse = failedResponse,
       isFailed = isFailed,
-      receiveTimeout = config.receiveTimeout,
       eventHandler = eventHandler
     )
   )
@@ -38,9 +39,10 @@ class ServiceAttackBlockerActor[T, R](
     maxFailures: Long,
     failureTimeout: FiniteDuration,
     resetTimeout: FiniteDuration,
+    receiveTimeout: FiniteDuration,
+    isOneShot: Boolean,
     failedResponse: => Try[R],
     isFailed: R => Boolean,
-    receiveTimeout: Option[Duration],
     eventHandler: Option[(ID, ServiceAttackBlockerStatus) => Unit]
 ) extends Actor
     with ActorLogging {
@@ -49,9 +51,8 @@ class ServiceAttackBlockerActor[T, R](
 
   type Message = SABMessage[T, R]
 
-  receiveTimeout.foreach(context.setReceiveTimeout)
-
   override def preStart: Unit = {
+    context.setReceiveTimeout(receiveTimeout)
     createSchedule
   }
 
@@ -79,25 +80,28 @@ class ServiceAttackBlockerActor[T, R](
     eventHandler.foreach(_.apply(id, ServiceAttackBlockerStatus.Closed))
   }
 
-  private val isFailover: Long => Boolean = _ > this.maxFailures
+  private val isBoundary: Long => Boolean = _ > this.maxFailures
 
   private def fail(failureCount: Long): Unit = {
     val count = failureCount + 1
     log.debug("failure count is [{}].", count)
     becomeClosed(count)
-    if (isFailover(count)) self ! Tick
+    if (isBoundary(count)) self ! Tick
   }
 
-  private def reset(): Unit = {
-    createSchedule
-    becomeClosed(0)
-  }
+  private def reset(): Unit =
+    if (isOneShot) {
+      context.stop(self)
+    } else {
+      createSchedule
+      becomeClosed(0)
+    }
 
   private def closed(failureCount: Long): Receive = {
     case GetStatus => sender ! ServiceAttackBlockerStatus.Closed // For debugging
 
     case Tick =>
-      if (isFailover(failureCount))
+      if (isBoundary(failureCount))
         becomeOpen()
       else
         reset()
