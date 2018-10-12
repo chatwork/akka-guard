@@ -20,8 +20,6 @@ object ServiceAttackBlockerActor {
       maxFailures = config.maxFailures,
       failureTimeout = config.failureTimeout,
       resetTimeout = config.resetTimeout,
-      receiveTimeout = config.receiveTimeout,
-      isOneShot = config.isOneShot,
       failedResponse = failedResponse,
       isFailed = isFailed,
       eventHandler = eventHandler
@@ -39,8 +37,6 @@ class ServiceAttackBlockerActor[T, R](
     maxFailures: Long,
     failureTimeout: FiniteDuration,
     resetTimeout: FiniteDuration,
-    receiveTimeout: FiniteDuration,
-    isOneShot: Boolean,
     failedResponse: => Try[R],
     isFailed: R => Boolean,
     eventHandler: Option[(ID, ServiceAttackBlockerStatus) => Unit]
@@ -49,15 +45,9 @@ class ServiceAttackBlockerActor[T, R](
   import ServiceAttackBlockerActor._
   import context.dispatcher
 
-  private def setReceiveTimeout(): Unit = {
-    log.debug("set receive timeout.")
-    context.setReceiveTimeout(receiveTimeout)
-  }
-
   type Message = SABMessage[T, R]
 
   override def preStart: Unit = {
-    setReceiveTimeout()
     createSchedule
   }
 
@@ -70,13 +60,12 @@ class ServiceAttackBlockerActor[T, R](
     case GetStatus      => sender ! ServiceAttackBlockerStatus.Open // For debugging
     case Tick           =>
     case _: Message     => reply(Future.fromTry(failedResponse))
-    case ReceiveTimeout => setReceiveTimeout()
   }
 
   private def becomeOpen(): Unit = {
     log.debug("become an open")
     context.become(open)
-    context.system.scheduler.scheduleOnce(resetTimeout)(reset())
+    context.system.scheduler.scheduleOnce(resetTimeout)(context.stop(self))
     eventHandler.foreach(_.apply(id, ServiceAttackBlockerStatus.Open))
   }
 
@@ -95,14 +84,6 @@ class ServiceAttackBlockerActor[T, R](
     if (isBoundary(count)) self ! Tick
   }
 
-  private def reset(): Unit =
-    if (isOneShot) {
-      context.stop(self)
-    } else {
-      createSchedule
-      becomeClosed(0)
-    }
-
   private def closed(failureCount: Long): Receive = {
     case GetStatus => sender ! ServiceAttackBlockerStatus.Closed // For debugging
 
@@ -110,7 +91,7 @@ class ServiceAttackBlockerActor[T, R](
       if (isBoundary(failureCount))
         becomeOpen()
       else
-        reset()
+        context.stop(self)
 
     case msg: Message =>
       val future = try {
@@ -125,9 +106,6 @@ class ServiceAttackBlockerActor[T, R](
       }
       reply(future)
 
-    case ReceiveTimeout =>
-      log.debug("ReceiveTimeout and context stop")
-      context.stop(self)
   }
 
   override def receive: Receive = closed(0)
