@@ -57,9 +57,9 @@ class ServiceAttackBlockerActor[T, R](
   private def reply(future: Future[R]) = future.pipeTo(sender)
 
   private val open: Receive = {
-    case GetStatus      => sender ! ServiceAttackBlockerStatus.Open // For debugging
-    case Tick           =>
-    case _: Message     => reply(Future.fromTry(failedResponse))
+    case GetStatus  => sender ! ServiceAttackBlockerStatus.Open // For debugging
+    case Tick       =>
+    case _: Message => reply(Future.fromTry(failedResponse))
   }
 
   private def becomeOpen(): Unit = {
