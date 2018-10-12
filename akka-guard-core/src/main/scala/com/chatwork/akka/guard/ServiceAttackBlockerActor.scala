@@ -49,10 +49,15 @@ class ServiceAttackBlockerActor[T, R](
   import ServiceAttackBlockerActor._
   import context.dispatcher
 
+  private def setReceiveTimeout(): Unit = {
+    log.debug("set receive timeout.")
+    context.setReceiveTimeout(receiveTimeout)
+  }
+
   type Message = SABMessage[T, R]
 
   override def preStart: Unit = {
-    context.setReceiveTimeout(receiveTimeout)
+    setReceiveTimeout()
     createSchedule
   }
 
@@ -62,9 +67,10 @@ class ServiceAttackBlockerActor[T, R](
   private def reply(future: Future[R]) = future.pipeTo(sender)
 
   private val open: Receive = {
-    case GetStatus  => sender ! ServiceAttackBlockerStatus.Open // For debugging
-    case Tick       =>
-    case _: Message => reply(Future.fromTry(failedResponse))
+    case GetStatus      => sender ! ServiceAttackBlockerStatus.Open // For debugging
+    case Tick           =>
+    case _: Message     => reply(Future.fromTry(failedResponse))
+    case ReceiveTimeout => setReceiveTimeout()
   }
 
   private def becomeOpen(): Unit = {
@@ -118,6 +124,10 @@ class ServiceAttackBlockerActor[T, R](
         case Success(r) if !isFailed(r) => becomeClosed(0)
       }
       reply(future)
+
+    case ReceiveTimeout =>
+      log.debug("ReceiveTimeout and context stop")
+      context.stop(self)
   }
 
   override def receive: Receive = closed(0)
