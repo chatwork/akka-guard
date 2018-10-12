@@ -30,6 +30,8 @@ object ServiceAttackBlockerActor {
 
   private[guard] case object Tick
   case object GetStatus
+  private[guard] case class Failed(failedCount: Long)
+  private[guard] case class BecameClosed(count: Long)
 }
 
 class ServiceAttackBlockerActor[T, R](
@@ -93,6 +95,9 @@ class ServiceAttackBlockerActor[T, R](
       else
         context.stop(self)
 
+    case Failed(failedCount) => fail(failedCount)
+    case BecameClosed(count) => becomeClosed(count)
+
     case msg: Message =>
       val future = try {
         msg.execute
@@ -100,9 +105,9 @@ class ServiceAttackBlockerActor[T, R](
         case NonFatal(cause) => Future.failed(cause)
       }
       future.onComplete {
-        case Failure(_)                 => fail(failureCount)
-        case Success(r) if isFailed(r)  => fail(failureCount)
-        case Success(r) if !isFailed(r) => becomeClosed(0)
+        case Failure(_)                 => self ! Failed(failureCount)
+        case Success(r) if isFailed(r)  => self ! Failed(failureCount)
+        case Success(r) if !isFailed(r) => self ! BecameClosed(0)
       }
       reply(future)
 
