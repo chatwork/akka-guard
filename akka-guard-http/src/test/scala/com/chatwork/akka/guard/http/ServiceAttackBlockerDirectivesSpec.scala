@@ -7,7 +7,7 @@ import akka.http.scaladsl.server._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.pattern.ask
 import akka.util.Timeout
-import com.chatwork.akka.guard.{ SABBrokerConfig, ServiceAttackBlockerActor, ServiceAttackBlockerStatus }
+import com.chatwork.akka.guard.{ SABActor, SABBrokerConfig, SABStatus }
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ FreeSpec, Matchers }
 
@@ -30,9 +30,9 @@ class ServiceAttackBlockerDirectivesSpec extends FreeSpec with Matchers with Sca
       }
 
       messageRef
-        .?(ServiceAttackBlockerActor.GetStatus)
-        .mapTo[ServiceAttackBlockerStatus]
-        .futureValue shouldBe ServiceAttackBlockerStatus.Closed
+        .?(SABActor.GetStatus)
+        .mapTo[SABStatus]
+        .futureValue shouldBe SABStatus.Closed
 
       (1 to 10).foreach { _ =>
         Get(uri(bad)) ~> routes ~> check {
@@ -41,9 +41,9 @@ class ServiceAttackBlockerDirectivesSpec extends FreeSpec with Matchers with Sca
       }
 
       messageRef
-        .?(ServiceAttackBlockerActor.GetStatus)
-        .mapTo[ServiceAttackBlockerStatus]
-        .futureValue shouldBe ServiceAttackBlockerStatus.Open
+        .?(SABActor.GetStatus)
+        .mapTo[SABStatus]
+        .futureValue shouldBe SABStatus.Open
 
       (1 to 10).foreach { _ =>
         Get(uri(bad)) ~> routes ~> check {
@@ -77,7 +77,7 @@ class ServiceAttackBlockerDirectivesSpec extends FreeSpec with Matchers with Sca
     val blocker: ServiceAttackBlocker   = ServiceAttackBlocker(system, sabConfig)(failedResponse, isFailed)
     val myBlocker: String => Directive0 = serviceAttackBlocker(blocker)
 
-    val messagePath: ActorPath     = system / blocker.actorName / ServiceAttackBlockerActor.name(clientId)
+    val messagePath: ActorPath     = system / blocker.actorName / SABActor.name(clientId)
     val messageRef: ActorSelection = system.actorSelection(messagePath)
 
     val ok  = "ok"

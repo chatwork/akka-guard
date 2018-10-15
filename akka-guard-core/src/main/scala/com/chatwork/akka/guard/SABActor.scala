@@ -8,14 +8,14 @@ import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 
-object ServiceAttackBlockerActor {
+object SABActor {
 
   def props[T, R](id: String,
                   config: SABBrokerConfig,
                   failedResponse: Try[R],
                   isFailed: R => Boolean,
-                  eventHandler: Option[(ID, ServiceAttackBlockerStatus) => Unit] = None): Props = Props(
-    new ServiceAttackBlockerActor[T, R](
+                  eventHandler: Option[(ID, SABStatus) => Unit] = None): Props = Props(
+    new SABActor[T, R](
       id = id,
       maxFailures = config.maxFailures,
       failureTimeout = config.failureTimeout,
@@ -34,17 +34,17 @@ object ServiceAttackBlockerActor {
   private[guard] case class BecameClosed(count: Long)
 }
 
-class ServiceAttackBlockerActor[T, R](
+class SABActor[T, R](
     id: ID,
     maxFailures: Long,
     failureTimeout: FiniteDuration,
     resetTimeout: FiniteDuration,
     failedResponse: => Try[R],
     isFailed: R => Boolean,
-    eventHandler: Option[(ID, ServiceAttackBlockerStatus) => Unit]
+    eventHandler: Option[(ID, SABStatus) => Unit]
 ) extends Actor
     with ActorLogging {
-  import ServiceAttackBlockerActor._
+  import SABActor._
   import context.dispatcher
 
   type Message = SABMessage[T, R]
@@ -59,7 +59,7 @@ class ServiceAttackBlockerActor[T, R](
   private def reply(future: Future[R]) = future.pipeTo(sender)
 
   private val open: Receive = {
-    case GetStatus  => sender ! ServiceAttackBlockerStatus.Open // For debugging
+    case GetStatus  => sender ! SABStatus.Open // For debugging
     case Tick       =>
     case _: Message => reply(Future.fromTry(failedResponse))
   }
@@ -68,13 +68,13 @@ class ServiceAttackBlockerActor[T, R](
     log.debug("become an open")
     context.become(open)
     context.system.scheduler.scheduleOnce(resetTimeout)(context.stop(self))
-    eventHandler.foreach(_.apply(id, ServiceAttackBlockerStatus.Open))
+    eventHandler.foreach(_.apply(id, SABStatus.Open))
   }
 
   private def becomeClosed(count: Long): Unit = {
     log.debug(s"become a closed to $count")
     context.become(closed(count))
-    eventHandler.foreach(_.apply(id, ServiceAttackBlockerStatus.Closed))
+    eventHandler.foreach(_.apply(id, SABStatus.Closed))
   }
 
   private val isBoundary: Long => Boolean = _ > this.maxFailures
@@ -87,7 +87,7 @@ class ServiceAttackBlockerActor[T, R](
   }
 
   private def closed(failureCount: Long): Receive = {
-    case GetStatus => sender ! ServiceAttackBlockerStatus.Closed // For debugging
+    case GetStatus => sender ! SABStatus.Closed // For debugging
 
     case Tick =>
       if (isBoundary(failureCount))

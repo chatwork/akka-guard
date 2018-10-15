@@ -7,14 +7,14 @@ import scala.util.Try
 class SABBroker[T, R](config: SABBrokerConfig,
                       failedResponse: Try[R],
                       isFailed: R => Boolean,
-                      eventHandler: Option[(ID, ServiceAttackBlockerStatus) => Unit] = None)
+                      eventHandler: Option[(ID, SABStatus) => Unit] = None)
     extends Actor {
   type GuardMessage = SABMessage[T, R]
 
   override def receive: Receive = {
     case msg: GuardMessage =>
       context
-        .child(ServiceAttackBlockerActor.name(msg.id))
+        .child(SABActor.name(msg.id))
         .fold(createAndForward(msg, msg.id))(forwardMsg(msg))
   }
 
@@ -22,8 +22,7 @@ class SABBroker[T, R](config: SABBrokerConfig,
     childRef forward msg
 
   private def createSABlocker(id: String): ActorRef =
-    context.actorOf(ServiceAttackBlockerActor.props(id, config, failedResponse, isFailed, eventHandler),
-                    ServiceAttackBlockerActor.name(id))
+    context.actorOf(SABActor.props(id, config, failedResponse, isFailed, eventHandler), SABActor.name(id))
 
   private def createAndForward(msg: GuardMessage, id: String): Unit =
     forwardMsg(msg)(createSABlocker(id))

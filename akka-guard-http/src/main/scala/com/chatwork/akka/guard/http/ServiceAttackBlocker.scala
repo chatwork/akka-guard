@@ -1,7 +1,7 @@
 package com.chatwork.akka.guard.http
 import akka.actor.{ ActorRef, ActorSystem, Props }
 import akka.http.scaladsl.server.RouteResult
-import com.chatwork.akka.guard.{ ID, SABBroker, SABBrokerConfig, ServiceAttackBlockerStatus }
+import com.chatwork.akka.guard.{ ID, SABBroker, SABBrokerConfig, SABStatus }
 
 import scala.util.Try
 
@@ -12,7 +12,7 @@ case class ServiceAttackBlocker(
 )(
     failedResponse: Try[ServiceAttackBlocker.R],
     isFailed: ServiceAttackBlocker.R => Boolean,
-    eventHandler: Option[(ID, ServiceAttackBlockerStatus) => Unit] = None
+    eventHandler: Option[(ID, SABStatus) => Unit] = None
 ) {
   import ServiceAttackBlocker._
   private lazy val broker: SABBroker[T, R] = new SABBroker(sabConfig, failedResponse, isFailed, eventHandler)

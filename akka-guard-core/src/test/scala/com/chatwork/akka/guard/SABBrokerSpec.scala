@@ -51,7 +51,7 @@ class SABBrokerSpec
         case request if request.length >= BoundaryLength => Future.successful(successMessage)
       }
       val sabBroker: ActorRef        = system.actorOf(Props(new SABBroker(config, failedResponse, isFailed)), sabBrokerName1)
-      val messagePath: ActorPath     = system / sabBrokerName1 / ServiceAttackBlockerActor.name(messageId)
+      val messagePath: ActorPath     = system / sabBrokerName1 / SABActor.name(messageId)
       val messageRef: ActorSelection = system.actorSelection(messagePath)
 
       When("Long input")
@@ -62,8 +62,8 @@ class SABBrokerSpec
       }
 
       And("Status Closed")
-      (messageRef ? ServiceAttackBlockerActor.GetStatus)
-        .mapTo[ServiceAttackBlockerStatus].futureValue shouldBe ServiceAttackBlockerStatus.Closed
+      (messageRef ? SABActor.GetStatus)
+        .mapTo[SABStatus].futureValue shouldBe SABStatus.Closed
 
       When("Short input")
       Then("return error message")
@@ -80,8 +80,8 @@ class SABBrokerSpec
       }
 
       And("Status Open")
-      (messageRef ? ServiceAttackBlockerActor.GetStatus)
-        .mapTo[ServiceAttackBlockerStatus].futureValue shouldBe ServiceAttackBlockerStatus.Open
+      (messageRef ? SABActor.GetStatus)
+        .mapTo[SABStatus].futureValue shouldBe SABStatus.Open
     }
 
     scenario("Future is slow") {
