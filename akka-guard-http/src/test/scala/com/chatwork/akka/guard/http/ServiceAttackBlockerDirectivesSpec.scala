@@ -12,7 +12,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ FreeSpec, Matchers }
 
 import scala.concurrent.duration._
-import scala.util.{ Failure, Try }
+import scala.util.{ Success, Try }
 
 class ServiceAttackBlockerDirectivesSpec extends FreeSpec with Matchers with ScalatestRouteTest with ScalaFutures {
 
@@ -60,7 +60,7 @@ class ServiceAttackBlockerDirectivesSpec extends FreeSpec with Matchers with Sca
   trait WithFixture {
     import ServiceAttackBlockerDirectives._
 
-    val failedResponse: Try[RouteResult] = Failure(new Exception("failed!!"))
+    val failedResponse: Try[RouteResult] = Success(RouteResult.Complete(HttpResponse(StatusCodes.InternalServerError)))
     val isFailed: RouteResult => Boolean = {
       case RouteResult.Complete(res) if res.status == StatusCodes.OK => false
       case RouteResult.Rejected(rejections)                          => rejectionHandler(rejections).isDefined

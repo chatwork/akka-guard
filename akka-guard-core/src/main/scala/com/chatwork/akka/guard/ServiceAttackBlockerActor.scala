@@ -20,8 +20,6 @@ object ServiceAttackBlockerActor {
       maxFailures = config.maxFailures,
       failureTimeout = config.failureTimeout,
       resetTimeout = config.resetTimeout,
-      receiveTimeout = config.receiveTimeout,
-      isOneShot = config.isOneShot,
       failedResponse = failedResponse,
       isFailed = isFailed,
       eventHandler = eventHandler
@@ -32,6 +30,8 @@ object ServiceAttackBlockerActor {
 
   private[guard] case object Tick
   case object GetStatus
+  private[guard] case class Failed(failedCount: Long)
+  private[guard] case class BecameClosed(count: Long)
 }
 
 class ServiceAttackBlockerActor[T, R](
@@ -39,8 +39,6 @@ class ServiceAttackBlockerActor[T, R](
     maxFailures: Long,
     failureTimeout: FiniteDuration,
     resetTimeout: FiniteDuration,
-    receiveTimeout: FiniteDuration,
-    isOneShot: Boolean,
     failedResponse: => Try[R],
     isFailed: R => Boolean,
     eventHandler: Option[(ID, ServiceAttackBlockerStatus) => Unit]
@@ -52,7 +50,6 @@ class ServiceAttackBlockerActor[T, R](
   type Message = SABMessage[T, R]
 
   override def preStart: Unit = {
-    context.setReceiveTimeout(receiveTimeout)
     createSchedule
   }
 
@@ -70,7 +67,7 @@ class ServiceAttackBlockerActor[T, R](
   private def becomeOpen(): Unit = {
     log.debug("become an open")
     context.become(open)
-    context.system.scheduler.scheduleOnce(resetTimeout)(reset())
+    context.system.scheduler.scheduleOnce(resetTimeout)(context.stop(self))
     eventHandler.foreach(_.apply(id, ServiceAttackBlockerStatus.Open))
   }
 
@@ -89,14 +86,6 @@ class ServiceAttackBlockerActor[T, R](
     if (isBoundary(count)) self ! Tick
   }
 
-  private def reset(): Unit =
-    if (isOneShot) {
-      context.stop(self)
-    } else {
-      createSchedule
-      becomeClosed(0)
-    }
-
   private def closed(failureCount: Long): Receive = {
     case GetStatus => sender ! ServiceAttackBlockerStatus.Closed // For debugging
 
@@ -104,7 +93,10 @@ class ServiceAttackBlockerActor[T, R](
       if (isBoundary(failureCount))
         becomeOpen()
       else
-        reset()
+        context.stop(self)
+
+    case Failed(failedCount) => fail(failedCount)
+    case BecameClosed(count) => becomeClosed(count)
 
     case msg: Message =>
       val future = try {
@@ -113,11 +105,12 @@ class ServiceAttackBlockerActor[T, R](
         case NonFatal(cause) => Future.failed(cause)
       }
       future.onComplete {
-        case Failure(_)                 => fail(failureCount)
-        case Success(r) if isFailed(r)  => fail(failureCount)
-        case Success(r) if !isFailed(r) => becomeClosed(0)
+        case Failure(_)                 => self ! Failed(failureCount)
+        case Success(r) if isFailed(r)  => self ! Failed(failureCount)
+        case Success(r) if !isFailed(r) => self ! BecameClosed(0)
       }
       reply(future)
+
   }
 
   override def receive: Receive = closed(0)
