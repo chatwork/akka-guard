@@ -7,7 +7,7 @@ import akka.http.scaladsl.server._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.pattern.ask
 import akka.util.Timeout
-import com.chatwork.akka.guard.{ SABActor, SABBrokerConfig, SABStatus }
+import com.chatwork.akka.guard._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{ FreeSpec, Matchers }
 
@@ -71,13 +71,13 @@ class ServiceAttackBlockerDirectivesSpec extends FreeSpec with Matchers with Sca
       SABBrokerConfig(
         maxFailures = 9,
         failureTimeout = 10.seconds,
-        resetTimeout = 1.hour
+        backoff = LinealBackoff(1.hour)
       )
 
     val blocker: ServiceAttackBlocker   = ServiceAttackBlocker(system, sabConfig)(failedResponse, isFailed)
     val myBlocker: String => Directive0 = serviceAttackBlocker(blocker)
 
-    val messagePath: ActorPath     = system / blocker.actorName / SABActor.name(clientId)
+    val messagePath: ActorPath     = system / blocker.actorName / SABSupervisor.name(clientId) / SABActor.name(clientId)
     val messageRef: ActorSelection = system.actorSelection(messagePath)
 
     val ok  = "ok"

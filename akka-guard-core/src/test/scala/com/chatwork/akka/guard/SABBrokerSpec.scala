@@ -44,14 +44,14 @@ class SABBrokerSpec
       val config: SABBrokerConfig = SABBrokerConfig(
         maxFailures = 9,
         failureTimeout = 10.seconds,
-        resetTimeout = 1.hour
+        backoff = LinealBackoff(1.hour)
       )
       val handler: String => Future[String] = {
         case request if request.length < BoundaryLength  => Future.failed(new Exception(errorMessage))
         case request if request.length >= BoundaryLength => Future.successful(successMessage)
       }
       val sabBroker: ActorRef        = system.actorOf(Props(new SABBroker(config, failedResponse, isFailed)), sabBrokerName1)
-      val messagePath: ActorPath     = system / sabBrokerName1 / SABActor.name(messageId)
+      val messagePath: ActorPath     = system / sabBrokerName1 / SABSupervisor.name(messageId) / SABActor.name(messageId)
       val messageRef: ActorSelection = system.actorSelection(messagePath)
 
       When("Long input")
@@ -94,7 +94,7 @@ class SABBrokerSpec
       val config: SABBrokerConfig = SABBrokerConfig(
         maxFailures = 9,
         failureTimeout = 500.milliseconds,
-        resetTimeout = 1.hour
+        backoff = LinealBackoff(1.hour)
       )
       val handler: String => Future[String] = _ =>
         Future {

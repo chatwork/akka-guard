@@ -16,10 +16,10 @@ object SABActor {
                   isFailed: R => Boolean,
                   eventHandler: Option[(ID, SABStatus) => Unit] = None): Props = Props(
     new SABActor[T, R](
-      id = id,
+      id,
       maxFailures = config.maxFailures,
+      backoff = config.backoff,
       failureTimeout = config.failureTimeout,
-      resetTimeout = config.resetTimeout,
       failedResponse = failedResponse,
       isFailed = isFailed,
       eventHandler = eventHandler
@@ -29,32 +29,52 @@ object SABActor {
   def name(id: String): String = s"SABlocker-$id"
 
   private[guard] case object Tick
+
   case object GetStatus
+
   private[guard] case class Failed(failedCount: Long)
+
   private[guard] case class BecameClosed(count: Long)
+
 }
 
 class SABActor[T, R](
     id: ID,
     maxFailures: Long,
+    backoff: Backoff,
     failureTimeout: FiniteDuration,
-    resetTimeout: FiniteDuration,
     failedResponse: => Try[R],
     isFailed: R => Boolean,
     eventHandler: Option[(ID, SABStatus) => Unit]
 ) extends Actor
     with ActorLogging {
+
   import SABActor._
   import context.dispatcher
 
   type Message = SABMessage[T, R]
 
   override def preStart: Unit = {
-    createSchedule
+    createFailureTimeoutSchedule
   }
 
-  private def createSchedule: Cancellable =
+  private def createResetBackoffSchedule: Unit = {
+    backoff match {
+      case b: ExponentialBackoff =>
+        b.backoffReset match {
+          case AutoReset(resetBackoff) =>
+            context.system.scheduler.scheduleOnce(resetBackoff) {
+              becomeClosed(0, 0)
+            }
+          case _ =>
+        }
+      case _ =>
+    }
+  }
+
+  private def createFailureTimeoutSchedule: Unit = {
     context.system.scheduler.scheduleOnce(failureTimeout, self, Tick)
+  }
 
   private def reply(future: Future[R]) = future.pipeTo(sender)
 
@@ -64,39 +84,57 @@ class SABActor[T, R](
     case _: Message => reply(Future.fromTry(failedResponse))
   }
 
-  private def becomeOpen(): Unit = {
+  private def becomeOpen(attempt: Long): Unit = {
     log.debug("become an open")
     context.become(open)
-    context.system.scheduler.scheduleOnce(resetTimeout)(context.stop(self))
+
+    if (backoff.strategy == SABBackoffStrategy.Exponential && attempt == 1)
+      createResetBackoffSchedule
+
+    context.system.scheduler.scheduleOnce(backoff.toDuration(attempt)) {
+      backoff.strategy match {
+        case SABBackoffStrategy.Lineal =>
+          self ! PoisonPill
+        case SABBackoffStrategy.Exponential =>
+          becomeClosed(attempt, 0)
+      }
+    }
+
     eventHandler.foreach(_.apply(id, SABStatus.Open))
   }
 
-  private def becomeClosed(count: Long): Unit = {
-    log.debug(s"become a closed to $count")
-    context.become(closed(count))
+  private def becomeClosed(attempt: Long, failureCount: Long): Unit = {
+    log.debug(s"become a closed to $failureCount")
+    createFailureTimeoutSchedule
+    context.become(closed(attempt, failureCount))
     eventHandler.foreach(_.apply(id, SABStatus.Closed))
   }
 
   private val isBoundary: Long => Boolean = _ > this.maxFailures
 
-  private def fail(failureCount: Long): Unit = {
+  private def fail(attempt: Long, failureCount: Long): Unit = {
     val count = failureCount + 1
     log.debug("failure count is [{}].", count)
-    becomeClosed(count)
+    becomeClosed(attempt, count)
     if (isBoundary(count)) self ! Tick
   }
 
-  private def closed(failureCount: Long): Receive = {
+  private def closed(attempt: Long, failureCount: Long): Receive = {
     case GetStatus => sender ! SABStatus.Closed // For debugging
 
     case Tick =>
       if (isBoundary(failureCount))
-        becomeOpen()
+        becomeOpen(attempt + 1)
       else
-        context.stop(self)
+        backoff.strategy match {
+          case SABBackoffStrategy.Lineal =>
+            context.stop(self)
+          case SABBackoffStrategy.Exponential =>
+            createFailureTimeoutSchedule
+        }
 
-    case Failed(failedCount) => fail(failedCount)
-    case BecameClosed(count) => becomeClosed(count)
+    case Failed(failedCount) => fail(attempt, failedCount)
+    case BecameClosed(count) => becomeClosed(attempt, count)
 
     case msg: Message =>
       val future = try {
@@ -113,6 +151,6 @@ class SABActor[T, R](
 
   }
 
-  override def receive: Receive = closed(0)
+  override def receive: Receive = closed(0, 0)
 
 }
