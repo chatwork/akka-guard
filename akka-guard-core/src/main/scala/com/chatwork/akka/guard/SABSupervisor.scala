@@ -1,6 +1,6 @@
 package com.chatwork.akka.guard
 
-import akka.actor.{ Actor, ActorLogging, ActorRef, Props, ReceiveTimeout, Terminated }
+import akka.actor.{ Actor, ActorLogging, ActorRef, PoisonPill, Props, ReceiveTimeout, Terminated }
 
 import scala.util.Try
 
@@ -39,18 +39,9 @@ class SABSupervisor[T, R](id: String,
 
   config.receiveTimeout.foreach(context.setReceiveTimeout)
 
-  override protected def createActor(id: String, props: Props, name: String): ActorRef = {
-    val child = super.createActor(id, props, name)
-    context.watch(child)
-    child
-  }
-
   override def receive: Receive = {
     case ReceiveTimeout =>
       log.debug(s"receive timeout")
-      context.stop(self)
-    case Terminated(ref) if context.children.toList.contains(ref) =>
-      log.debug(s"child terminated: $ref")
       context.stop(self)
     case msg: Message =>
       context
