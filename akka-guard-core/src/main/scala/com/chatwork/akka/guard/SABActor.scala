@@ -64,7 +64,7 @@ class SABActor[T, R](
         b.backoffReset match {
           case AutoReset(resetBackoff) =>
             context.system.scheduler.scheduleOnce(resetBackoff) {
-              becomeClosed(0, 0)
+              becomeClosed(attempt = 0, failureCount = 0)
             }
           case _ =>
         }
@@ -96,18 +96,19 @@ class SABActor[T, R](
         case SABBackoffStrategy.Lineal =>
           self ! PoisonPill
         case SABBackoffStrategy.Exponential =>
-          becomeClosed(attempt, 0)
+          createFailureTimeoutSchedule
+          becomeClosed(attempt, failureCount = 0)
       }
     }
 
     eventHandler.foreach(_.apply(id, SABStatus.Open))
   }
 
-  private def becomeClosed(attempt: Long, failureCount: Long): Unit = {
+  private def becomeClosed(attempt: Long, failureCount: Long, fireEventHandler: Boolean = true): Unit = {
     log.debug(s"become a closed to $failureCount")
-    createFailureTimeoutSchedule
     context.become(closed(attempt, failureCount))
-    eventHandler.foreach(_.apply(id, SABStatus.Closed))
+    if (fireEventHandler)
+      eventHandler.foreach(_.apply(id, SABStatus.Closed))
   }
 
   private val isBoundary: Long => Boolean = _ > this.maxFailures
@@ -115,7 +116,7 @@ class SABActor[T, R](
   private def fail(attempt: Long, failureCount: Long): Unit = {
     val count = failureCount + 1
     log.debug("failure count is [{}].", count)
-    becomeClosed(attempt, count)
+    becomeClosed(attempt, count, fireEventHandler = false)
     if (isBoundary(count)) self ! Tick
   }
 
@@ -134,7 +135,8 @@ class SABActor[T, R](
         }
 
     case Failed(failedCount) => fail(attempt, failedCount)
-    case BecameClosed(count) => becomeClosed(attempt, count)
+    case BecameClosed(count) => becomeClosed(attempt, count, fireEventHandler = false)
+    case ManualReset         => becomeClosed(attempt = 0, failureCount = failureCount, fireEventHandler = false)
 
     case msg: Message =>
       val future = try {
@@ -151,6 +153,6 @@ class SABActor[T, R](
 
   }
 
-  override def receive: Receive = closed(0, 0)
+  override def receive: Receive = closed(attempt = 0, failureCount = 0)
 
 }

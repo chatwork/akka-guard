@@ -47,9 +47,10 @@ class SABSupervisor[T, R](id: String,
 
   override def receive: Receive = {
     case ReceiveTimeout =>
+      log.debug(s"receive timeout")
       context.stop(self)
     case Terminated(ref) if context.children.toList.contains(ref) =>
-      log.debug(s"terminated $ref")
+      log.debug(s"child terminated: $ref")
       context.stop(self)
     case msg: Message =>
       context
