@@ -2,11 +2,12 @@ package com.chatwork.akka.guard
 
 import akka.actor._
 import akka.pattern.pipe
+import com.sun.tools.classfile.TypeAnnotation.Position
 
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
-import scala.util.{ Failure, Success, Try }
+import scala.util.{Failure, Success, Try}
 
 object SABActor {
 
@@ -28,26 +29,29 @@ object SABActor {
 
   def name(id: String): String = s"SABlocker-$id"
 
-  private[guard] case object Tick
+  private[guard] case object FailureTimeout
+
+  case class GetAttemptRequest(id: ID)
+  case class GetAttemptResponse(id: ID, attempt: Long)
 
   case object GetStatus
 
   private[guard] case class Failed(failedCount: Long)
 
-  private[guard] case class BecameClosed(count: Long)
+  private[guard] case class BecameClosed(attempt: Long, count: Long, setTimer: Boolean)
 
 }
 
 class SABActor[T, R](
-    id: ID,
-    maxFailures: Long,
-    backoff: Backoff,
-    failureTimeout: FiniteDuration,
-    failedResponse: => Try[R],
-    isFailed: R => Boolean,
-    eventHandler: Option[(ID, SABStatus) => Unit]
-) extends Actor
-    with ActorLogging {
+                      id: ID,
+                      maxFailures: Long,
+                      backoff: Backoff,
+                      failureTimeout: FiniteDuration,
+                      failedResponse: => Try[R],
+                      isFailed: R => Boolean,
+                      eventHandler: Option[(ID, SABStatus) => Unit]
+                    ) extends Actor
+  with ActorLogging {
 
   import SABActor._
   import context.dispatcher
@@ -63,9 +67,7 @@ class SABActor[T, R](
       case b: ExponentialBackoff =>
         b.backoffReset match {
           case AutoReset(resetBackoff) =>
-            context.system.scheduler.scheduleOnce(resetBackoff) {
-              becomeClosed(attempt = 0, failureCount = 0)
-            }
+            context.system.scheduler.scheduleOnce(resetBackoff, self, BecameClosed(0, 0, setTimer = true))
           case _ =>
         }
       case _ =>
@@ -73,32 +75,32 @@ class SABActor[T, R](
   }
 
   private def createFailureTimeoutSchedule: Unit = {
-    context.system.scheduler.scheduleOnce(failureTimeout, self, Tick)
+    context.system.scheduler.scheduleOnce(failureTimeout, self, FailureTimeout)
   }
 
   private def reply(future: Future[R]) = future.pipeTo(sender)
 
   private val open: Receive = {
-    case GetStatus  => sender ! SABStatus.Open // For debugging
-    case Tick       =>
+    case GetStatus => sender ! SABStatus.Open // For debugging
+    case FailureTimeout =>
     case _: Message => reply(Future.fromTry(failedResponse))
   }
 
-  private def becomeOpen(attempt: Long): Unit = {
+  private def commonWithOpen(attempt: Long, failureCount: Long) = common(attempt, failureCount) orElse open
+
+  private def becomeOpen(attempt: Long, failureCount: Long): Unit = {
     log.debug("become an open")
-    context.become(open)
+    context.become(commonWithOpen(attempt, failureCount))
 
-    if (backoff.strategy == SABBackoffStrategy.Exponential && attempt == 1)
-      createResetBackoffSchedule
-
-    context.system.scheduler.scheduleOnce(backoff.toDuration(attempt)) {
-      backoff.strategy match {
-        case SABBackoffStrategy.Lineal =>
-          self ! PoisonPill
-        case SABBackoffStrategy.Exponential =>
-          createFailureTimeoutSchedule
-          becomeClosed(attempt, failureCount = 0)
-      }
+    backoff match {
+      case LinealBackoff(_) =>
+        context.system.scheduler.scheduleOnce(backoff.toDuration(attempt), self, PoisonPill)
+      case eb: ExponentialBackoff =>
+        val d = backoff.toDuration(attempt)
+        if (eb.maxBackoff <= d)
+          createResetBackoffSchedule
+        else
+          context.system.scheduler.scheduleOnce(d, self, BecameClosed(attempt, 0, setTimer = true))
     }
 
     eventHandler.foreach(_.apply(id, SABStatus.Open))
@@ -106,7 +108,7 @@ class SABActor[T, R](
 
   private def becomeClosed(attempt: Long, failureCount: Long, fireEventHandler: Boolean = true): Unit = {
     log.debug(s"become a closed to $failureCount")
-    context.become(closed(attempt, failureCount))
+    context.become(commonWithClosed(attempt, failureCount))
     if (fireEventHandler)
       eventHandler.foreach(_.apply(id, SABStatus.Closed))
   }
@@ -117,26 +119,35 @@ class SABActor[T, R](
     val count = failureCount + 1
     log.debug("failure count is [{}].", count)
     becomeClosed(attempt, count, fireEventHandler = false)
-    if (isBoundary(count)) self ! Tick
+    if (isBoundary(count)) self ! FailureTimeout
+  }
+
+  private def common(attempt: Long, failureCount: Long):Receive = {
+    case GetAttemptRequest(_id) =>
+      require(_id == id)
+      sender() ! GetAttemptResponse(id, attempt)
+    case BecameClosed(_attempt, _count, b) =>
+      if (b) createFailureTimeoutSchedule
+      becomeClosed(_attempt, _count, fireEventHandler = false)
   }
 
   private def closed(attempt: Long, failureCount: Long): Receive = {
     case GetStatus => sender ! SABStatus.Closed // For debugging
 
-    case Tick =>
+    case FailureTimeout =>
       if (isBoundary(failureCount))
-        becomeOpen(attempt + 1)
+        becomeOpen(attempt + 1, failureCount)
       else
         backoff.strategy match {
           case SABBackoffStrategy.Lineal =>
             context.stop(self)
           case SABBackoffStrategy.Exponential =>
             createFailureTimeoutSchedule
+            becomeClosed(attempt, failureCount = 0, fireEventHandler = false)
         }
 
     case Failed(failedCount) => fail(attempt, failedCount)
-    case BecameClosed(count) => becomeClosed(attempt, count, fireEventHandler = false)
-    case ManualReset         => becomeClosed(attempt = 0, failureCount = failureCount, fireEventHandler = false)
+    case ManualReset => becomeClosed(attempt = 0, failureCount = failureCount, fireEventHandler = false)
 
     case msg: Message =>
       val future = try {
@@ -145,14 +156,16 @@ class SABActor[T, R](
         case NonFatal(cause) => Future.failed(cause)
       }
       future.onComplete {
-        case Failure(_)                 => self ! Failed(failureCount)
-        case Success(r) if isFailed(r)  => self ! Failed(failureCount)
-        case Success(r) if !isFailed(r) => self ! BecameClosed(0)
+        case Failure(_) => self ! Failed(failureCount)
+        case Success(r) if isFailed(r) => self ! Failed(failureCount)
+        case Success(r) if !isFailed(r) => self ! BecameClosed(attempt, 0, setTimer = false)
       }
       reply(future)
 
   }
 
-  override def receive: Receive = closed(attempt = 0, failureCount = 0)
+  private def commonWithClosed(attempt: Long, failureCount: Long) = common(attempt, failureCount) orElse closed(attempt, failureCount)
+
+  override def receive: Receive = commonWithClosed(0, 0)
 
 }

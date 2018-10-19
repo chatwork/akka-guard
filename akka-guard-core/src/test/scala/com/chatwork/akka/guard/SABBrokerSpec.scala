@@ -35,7 +35,7 @@ class SABBrokerSpec
 
   feature("SABBrokerSpec") {
 
-    scenario("Success") {
+    scenario("Success in LinealBackoff") {
 
       Given("broker pattern 1")
       implicit val timeout: Timeout = Timeout(5.seconds)
@@ -84,7 +84,7 @@ class SABBrokerSpec
         .mapTo[SABStatus].futureValue shouldBe SABStatus.Open
     }
 
-    scenario("Future is slow") {
+    scenario("Future is slow in LinealBackoff") {
 
       Given("broker pattern 2")
       import system.dispatcher
