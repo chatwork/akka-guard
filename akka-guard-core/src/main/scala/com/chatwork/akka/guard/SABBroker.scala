@@ -5,7 +5,7 @@ import akka.actor._
 import scala.util.Try
 
 class SABBroker[T, R](config: SABBrokerConfig,
-                      failedResponse: Try[R],
+                      failedResponse: => Try[R],
                       isFailed: R => Boolean,
                       eventHandler: Option[(ID, SABStatus) => Unit] = None)
     extends Actor

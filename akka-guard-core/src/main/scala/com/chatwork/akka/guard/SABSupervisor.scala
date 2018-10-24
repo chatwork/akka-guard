@@ -8,7 +8,7 @@ object SABSupervisor {
 
   def props[T, R](id: String,
                   config: SABBrokerConfig,
-                  failedResponse: Try[R],
+                  failedResponse: => Try[R],
                   isFailed: R => Boolean,
                   eventHandler: Option[(ID, SABStatus) => Unit] = None): Props = Props(
     new SABSupervisor[T, R](
@@ -26,7 +26,7 @@ object SABSupervisor {
 
 class SABSupervisor[T, R](id: String,
                           config: SABBrokerConfig,
-                          failedResponse: Try[R],
+                          failedResponse: => Try[R],
                           isFailed: R => Boolean,
                           eventHandler: Option[(ID, SABStatus) => Unit] = None)
     extends Actor

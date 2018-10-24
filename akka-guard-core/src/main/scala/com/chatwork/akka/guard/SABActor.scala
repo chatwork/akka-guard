@@ -12,7 +12,7 @@ object SABActor {
 
   def props[T, R](id: String,
                   config: SABBrokerConfig,
-                  failedResponse: Try[R],
+                  failedResponse: => Try[R],
                   isFailed: R => Boolean,
                   eventHandler: Option[(ID, SABStatus) => Unit] = None): Props = Props(
     config.backoff match {
