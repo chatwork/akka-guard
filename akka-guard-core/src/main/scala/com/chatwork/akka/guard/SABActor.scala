@@ -59,7 +59,7 @@ class SABActor[T, R](
 
   override def preStart: Unit = {
     log.debug("preStart")
-    createFailureTimeoutSchedule
+    createFailureTimeoutSchedule()
   }
 
   override def postStop(): Unit = {
@@ -72,7 +72,7 @@ class SABActor[T, R](
   private var failureTimeoutCancel: Cancellable = _
   private var closeCancel: Option[Cancellable]  = None
 
-  private def createResetBackoffSchedule: Unit = {
+  private def createResetBackoffSchedule(): Unit = {
     backoff match {
       case b: ExponentialBackoff =>
         b.backoffReset match {
@@ -88,7 +88,7 @@ class SABActor[T, R](
     }
   }
 
-  private def createFailureTimeoutSchedule: Unit = {
+  private def createFailureTimeoutSchedule(): Unit = {
     failureTimeoutCancel = context.system.scheduler.scheduleOnce(failureTimeout, self, FailureTimeout)
   }
 
@@ -112,7 +112,7 @@ class SABActor[T, R](
       case eb: ExponentialBackoff =>
         val d = backoff.toDuration(attempt)
         if (eb.maxBackoff <= d)
-          createResetBackoffSchedule
+          createResetBackoffSchedule()
         else
           closeCancel = Some(context.system.scheduler.scheduleOnce(d, self, BecameClosed(attempt, 0, setTimer = true)))
     }
@@ -141,7 +141,7 @@ class SABActor[T, R](
       require(_id == id)
       sender() ! GetAttemptResponse(id, attempt)
     case BecameClosed(_attempt, _count, b) =>
-      if (b) createFailureTimeoutSchedule
+      if (b) createFailureTimeoutSchedule()
       becomeClosed(_attempt, _count, fireEventHandler = false)
   }
 
@@ -156,7 +156,7 @@ class SABActor[T, R](
           case SABBackoffStrategy.Lineal =>
             context.stop(self)
           case SABBackoffStrategy.Exponential =>
-            createFailureTimeoutSchedule
+            createFailureTimeoutSchedule()
             becomeClosed(attempt, failureCount = 0, fireEventHandler = false)
         }
 

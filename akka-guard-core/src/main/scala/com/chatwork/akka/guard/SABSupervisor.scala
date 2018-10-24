@@ -1,6 +1,6 @@
 package com.chatwork.akka.guard
 
-import akka.actor.{ Actor, ActorLogging, ActorRef, PoisonPill, Props, ReceiveTimeout, Terminated }
+import akka.actor.{ Actor, ActorLogging, Props, ReceiveTimeout }
 
 import scala.util.Try
 
