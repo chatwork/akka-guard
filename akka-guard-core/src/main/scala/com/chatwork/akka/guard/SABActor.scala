@@ -41,12 +41,12 @@ object SABActor {
 
   def name(id: String): String = s"SABlocker-$id"
 
-  private[guard] case object FailureTimeout
-
   case class GetAttemptRequest(id: ID)
   case class GetAttemptResponse(id: ID, attempt: Long)
 
   case object GetStatus
+
+  private[guard] case object FailureTimeout
 
   private[guard] case class Failed(failedCount: Long)
 
@@ -81,6 +81,9 @@ sealed abstract class SABActor[T, R](
     super.postStop()
   }
 
+  protected def createResetBackoffSchedule(attempt: Long): Option[Cancellable]
+  protected def reset(attempt: Long): Unit
+
   private var failureTimeoutCancel: Cancellable = _
   private var closeCancel: Option[Cancellable]  = None
 
@@ -97,8 +100,6 @@ sealed abstract class SABActor[T, R](
   }
 
   private def commonWithOpen(attempt: Long, failureCount: Long) = common(attempt, failureCount) orElse open
-
-  protected def createResetBackoffSchedule(attempt: Long): Option[Cancellable]
 
   private def becomeOpen(attempt: Long, failureCount: Long): Unit = {
     log.debug("become an open")
@@ -131,8 +132,6 @@ sealed abstract class SABActor[T, R](
       if (b) createFailureTimeoutSchedule()
       becomeClosed(_attempt, _count, fireEventHandler = false)
   }
-
-  protected def reset(attempt: Long): Unit
 
   private def closed(attempt: Long, failureCount: Long): Receive = {
     case GetStatus => sender ! SABStatus.Closed // For debugging
