@@ -17,25 +17,23 @@ object SABActor {
                   eventHandler: Option[(ID, SABStatus) => Unit] = None): Props = Props(
     config.backoff match {
       case b: ExponentialBackoff =>
-        new ExponentialBackoffActor[T, R](
+        new SABActor[T, R, ExponentialBackoff](
           id,
           maxFailures = config.maxFailures,
-          backoff = b,
           failureTimeout = config.failureTimeout,
           failedResponse = failedResponse,
           isFailed = isFailed,
           eventHandler = eventHandler
-        )
+        )(b) with ExponentialBackoffActor
       case b: LinealBackoff =>
-        new LinealBackoffActor[T, R](
+        new SABActor[T, R, LinealBackoff](
           id,
           maxFailures = config.maxFailures,
-          backoff = b,
           failureTimeout = config.failureTimeout,
           failedResponse = failedResponse,
           isFailed = isFailed,
           eventHandler = eventHandler
-        )
+        )(b) with LinealBackoffActor
     }
   )
 
@@ -52,19 +50,33 @@ object SABActor {
 
   private[guard] case class BecameClosed(attempt: Long, count: Long, setTimer: Boolean)
 
+  trait FailureTimeoutSchedule {
+    protected def createFailureTimeoutSchedule(): Unit
+  }
+
+  trait BecomeClosedActor {
+    protected def becomeClosed(attempt: Long, failureCount: Long, fireEventHandler: Boolean = true): Unit
+  }
+
 }
 
-sealed abstract class SABActor[T, R](
+import com.chatwork.akka.guard.SABActor._
+
+class SABActor[T, R, B <: Backoff](
     id: ID,
     maxFailures: Long,
     failureTimeout: FiniteDuration,
     failedResponse: => Try[R],
     isFailed: R => Boolean,
     eventHandler: Option[(ID, SABStatus) => Unit]
+)(
+    override protected val backoff: B,
 ) extends Actor
-    with ActorLogging {
+    with ActorLogging
+    with FailureTimeoutSchedule
+    with BecomeClosedActor {
+  _: BackoffActor[B] =>
 
-  import SABActor._
   import context.dispatcher
 
   type Message = SABMessage[T, R]
@@ -84,7 +96,7 @@ sealed abstract class SABActor[T, R](
   private var failureTimeoutCancel: Cancellable = _
   private var closeCancel: Option[Cancellable]  = None
 
-  protected def createFailureTimeoutSchedule(): Unit = {
+  override protected def createFailureTimeoutSchedule(): Unit = {
     failureTimeoutCancel = context.system.scheduler.scheduleOnce(failureTimeout, self, FailureTimeout)
   }
 
@@ -98,8 +110,6 @@ sealed abstract class SABActor[T, R](
 
   private def commonWithOpen(attempt: Long, failureCount: Long) = common(attempt, failureCount) orElse open
 
-  protected def createResetBackoffSchedule(attempt: Long): Option[Cancellable]
-
   private def becomeOpen(attempt: Long, failureCount: Long): Unit = {
     log.debug("become an open")
     context.become(commonWithOpen(attempt, failureCount))
@@ -107,7 +117,7 @@ sealed abstract class SABActor[T, R](
     eventHandler.foreach(_.apply(id, SABStatus.Open))
   }
 
-  protected def becomeClosed(attempt: Long, failureCount: Long, fireEventHandler: Boolean = true): Unit = {
+  override protected def becomeClosed(attempt: Long, failureCount: Long, fireEventHandler: Boolean = true): Unit = {
     log.debug(s"become a closed to $failureCount")
     context.become(commonWithClosed(attempt, failureCount))
     if (fireEventHandler)
@@ -131,8 +141,6 @@ sealed abstract class SABActor[T, R](
       if (b) createFailureTimeoutSchedule()
       becomeClosed(_attempt, _count, fireEventHandler = false)
   }
-
-  protected def reset(attempt: Long): Unit
 
   private def closed(attempt: Long, failureCount: Long): Receive = {
     case GetStatus => sender ! SABStatus.Closed // For debugging
@@ -166,59 +174,4 @@ sealed abstract class SABActor[T, R](
 
   override def receive: Receive = commonWithClosed(0, 0)
 
-}
-
-class ExponentialBackoffActor[T, R](
-    id: ID,
-    maxFailures: Long,
-    backoff: ExponentialBackoff,
-    failureTimeout: FiniteDuration,
-    failedResponse: => Try[R],
-    isFailed: R => Boolean,
-    eventHandler: Option[(ID, SABStatus) => Unit]
-) extends SABActor[T, R](id, maxFailures, failureTimeout, failedResponse, isFailed, eventHandler) {
-  import SABActor._
-  import context.dispatcher
-
-  private def createResetBackoffSchedule(): Option[Cancellable] = {
-    backoff.backoffReset match {
-      case AutoReset(resetBackoff) =>
-        Some(
-          context.system.scheduler.scheduleOnce(resetBackoff, self, BecameClosed(0, 0, setTimer = true))
-        )
-      case _ =>
-        None
-    }
-  }
-
-  override protected def createResetBackoffSchedule(attempt: Long): Option[Cancellable] = {
-    val d = backoff.toDuration(attempt)
-    if (backoff.maxBackoff <= d)
-      createResetBackoffSchedule()
-    else
-      Some(context.system.scheduler.scheduleOnce(d, self, BecameClosed(attempt, 0, setTimer = true)))
-  }
-  override protected def reset(attempt: Long): Unit = {
-    createFailureTimeoutSchedule()
-    becomeClosed(attempt, failureCount = 0, fireEventHandler = false)
-  }
-}
-
-class LinealBackoffActor[T, R](
-    id: ID,
-    maxFailures: Long,
-    backoff: LinealBackoff,
-    failureTimeout: FiniteDuration,
-    failedResponse: => Try[R],
-    isFailed: R => Boolean,
-    eventHandler: Option[(ID, SABStatus) => Unit]
-) extends SABActor[T, R](id, maxFailures, failureTimeout, failedResponse, isFailed, eventHandler) {
-  import context.dispatcher
-
-  override protected def createResetBackoffSchedule(attempt: Long): Option[Cancellable] =
-    Some(context.system.scheduler.scheduleOnce(backoff.toDuration(attempt), self, PoisonPill))
-
-  override protected def reset(attempt: Long): Unit = {
-    context.stop(self)
-  }
 }
