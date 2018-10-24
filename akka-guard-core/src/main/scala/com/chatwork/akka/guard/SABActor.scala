@@ -69,8 +69,8 @@ class SABActor[T, R](
     super.postStop()
   }
 
-  private var failureTimeoutCancel: Cancellable       = _
-  private var closeCancel: Option[Cancellable]        = None
+  private var failureTimeoutCancel: Cancellable = _
+  private var closeCancel: Option[Cancellable]  = None
 
   private def createResetBackoffSchedule: Unit = {
     backoff match {
