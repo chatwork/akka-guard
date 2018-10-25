@@ -21,10 +21,7 @@ class SABExponentialSpec
     with PropertyChecks
     with Matchers
     with ScalaFutures {
-  val BoundaryLength           = 50
-  val genShortStr: Gen[String] = Gen.asciiStr.suchThat(_.length < BoundaryLength)
-  val genLongStr: Gen[String]  = Gen.asciiStr.suchThat(_.length >= BoundaryLength)
-
+  val BoundaryLength              = 50
   val failedMessage               = "failed!!"
   val errorMessage                = "error!!"
   val successMessage              = "success!!"
@@ -39,7 +36,7 @@ class SABExponentialSpec
       val config: SABBrokerConfig = SABBrokerConfig(
         maxFailures = 9,
         failureTimeout = 10.seconds,
-        backoff = ExponentialBackoff(minBackoff = 1 seconds, maxBackoff = 5 seconds, randomFactor = 0.2)
+        backoff = ExponentialBackoff(minBackoff = 2 seconds, maxBackoff = 10 seconds, randomFactor = 0.2)
       )
       val handler: String => Future[String] = {
         case request if request.length < BoundaryLength  => Future.failed(new Exception(errorMessage))
@@ -55,6 +52,9 @@ class SABExponentialSpec
       (messageRef ? SABActor.GetStatus)
         .mapTo[SABStatus].futureValue shouldBe SABStatus.Closed
 
+      (messageRef ? SABActor.GetAttemptRequest(messageId))
+        .mapTo[SABActor.GetAttemptResponse].futureValue.attempt shouldBe 0
+
       val message2 = SABMessage(messageId, "A" * 49, handler)
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
@@ -67,7 +67,7 @@ class SABExponentialSpec
       awaitCond(
         (messageRef ? SABActor.GetStatus)
           .mapTo[SABStatus].futureValue == SABStatus.Closed,
-        5 seconds,
+        10 seconds,
         1 seconds
       )
 
@@ -82,7 +82,7 @@ class SABExponentialSpec
       awaitCond(
         (messageRef ? SABActor.GetStatus)
           .mapTo[SABStatus].futureValue == SABStatus.Closed,
-        5 seconds,
+        10 seconds,
         1 seconds
       )
 
@@ -97,7 +97,7 @@ class SABExponentialSpec
       awaitCond(
         (messageRef ? SABActor.GetStatus)
           .mapTo[SABStatus].futureValue == SABStatus.Closed,
-        5 seconds,
+        10 seconds,
         1 seconds
       )
 
@@ -112,7 +112,7 @@ class SABExponentialSpec
       awaitCond(
         (messageRef ? SABActor.GetStatus)
           .mapTo[SABStatus].futureValue == SABStatus.Closed,
-        5 seconds,
+        10 seconds,
         1 seconds
       )
 
