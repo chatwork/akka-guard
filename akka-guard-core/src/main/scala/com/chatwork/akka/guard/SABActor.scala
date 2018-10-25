@@ -179,12 +179,13 @@ class ExponentialBackoffActor[T, R](
   import SABActor._
   import context.dispatcher
 
+  protected def createScheduler(delay: FiniteDuration, attempt: Long): Cancellable =
+    context.system.scheduler.scheduleOnce(delay, self, BecameClosed(attempt, 0, setTimer = true))
+
   private def createResetBackoffSchedule(): Option[Cancellable] = {
     backoff.backoffReset match {
       case AutoReset(resetBackoff) =>
-        Some(
-          context.system.scheduler.scheduleOnce(resetBackoff, self, BecameClosed(0, 0, setTimer = true))
-        )
+        Some(createScheduler(resetBackoff, 0))
       case _ =>
         None
     }
@@ -195,8 +196,9 @@ class ExponentialBackoffActor[T, R](
     if (backoff.maxBackoff <= d)
       createResetBackoffSchedule()
     else
-      Some(context.system.scheduler.scheduleOnce(d, self, BecameClosed(attempt, 0, setTimer = true)))
+      Some(createScheduler(d, attempt))
   }
+
   override protected def reset(attempt: Long): Unit = {
     createFailureTimeoutSchedule()
     becomeClosed(attempt, failureCount = 0, fireEventHandler = false)

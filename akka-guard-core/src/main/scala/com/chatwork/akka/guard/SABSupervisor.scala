@@ -35,7 +35,7 @@ class SABSupervisor[T, R](id: String,
 
   override type Message = SABMessage[T, R]
 
-  private def props(id: ID) = SABActor.props(id, config, failedResponse, isFailed, eventHandler)
+  protected def props(id: ID): Props = SABActor.props(id, config, failedResponse, isFailed, eventHandler)
 
   config.receiveTimeout.foreach(context.setReceiveTimeout)
 

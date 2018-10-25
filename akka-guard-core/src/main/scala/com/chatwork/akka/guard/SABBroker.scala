@@ -12,7 +12,7 @@ class SABBroker[T, R](config: SABBrokerConfig,
     with MessageForwarder {
   override type Message = SABMessage[T, R]
 
-  private def props(id: ID) = SABSupervisor.props(id, config, failedResponse, isFailed, eventHandler)
+  protected def props(id: ID): Props = SABSupervisor.props(id, config, failedResponse, isFailed, eventHandler)
 
   override def receive: Receive = {
     case msg: Message =>
