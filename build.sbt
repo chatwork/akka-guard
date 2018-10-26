@@ -34,7 +34,8 @@ val commonSettings = Seq(
     Circe.core,
     Circe.generic,
     Circe.parser,
-    Akka.actor
+    Akka.actor,
+    Akka.slf4j
   ),
   updateOptions := updateOptions.value.withCachedResolution(true),
   parallelExecution in Test := false,

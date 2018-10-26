@@ -8,23 +8,17 @@ class SABBroker[T, R](config: SABBrokerConfig,
                       failedResponse: Try[R],
                       isFailed: R => Boolean,
                       eventHandler: Option[(ID, SABStatus) => Unit] = None)
-    extends Actor {
-  type GuardMessage = SABMessage[T, R]
+    extends Actor
+    with MessageForwarder {
+  override type Message = SABMessage[T, R]
+
+  private def props(id: ID) = SABSupervisor.props(id, config, failedResponse, isFailed, eventHandler)
 
   override def receive: Receive = {
-    case msg: GuardMessage =>
+    case msg: Message =>
       context
-        .child(SABActor.name(msg.id))
-        .fold(createAndForward(msg, msg.id))(forwardMsg(msg))
+        .child(SABSupervisor.name(msg.id))
+        .fold(createAndForward(msg, msg.id, props(msg.id), SABSupervisor.name(msg.id)))(forwardMsg(msg))
   }
-
-  private def forwardMsg(msg: GuardMessage)(childRef: ActorRef): Unit =
-    childRef forward msg
-
-  private def createSABlocker(id: String): ActorRef =
-    context.actorOf(SABActor.props(id, config, failedResponse, isFailed, eventHandler), SABActor.name(id))
-
-  private def createAndForward(msg: GuardMessage, id: String): Unit =
-    forwardMsg(msg)(createSABlocker(id))
 
 }

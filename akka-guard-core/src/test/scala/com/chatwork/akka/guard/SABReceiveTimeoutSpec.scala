@@ -14,15 +14,13 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{ Failure, Try }
 
-class SABBrokerSpec
-    extends TestKit(ActorSystem("SABBrokerSpec"))
-    with FeatureSpecLike
+class SABReceiveTimeoutSpec
+    extends TestKit(ActorSystem("SABReceiveTimeoutSpec"))
+    with FreeSpecLike
     with BeforeAndAfterAll
-    with GivenWhenThen
     with PropertyChecks
     with Matchers
     with ScalaFutures {
-
   val BoundaryLength           = 50
   val genShortStr: Gen[String] = Gen.asciiStr.suchThat(_.length < BoundaryLength)
   val genLongStr: Gen[String]  = Gen.asciiStr.suchThat(_.length >= BoundaryLength)
@@ -33,18 +31,16 @@ class SABBrokerSpec
   val failedResponse: Try[String] = Failure(new Exception(failedMessage))
   val isFailed: String => Boolean = _ => false
 
-  feature("SABBrokerSpec") {
-
-    scenario("Success in LinealBackoff") {
-
-      Given("broker pattern 1")
-      implicit val timeout: Timeout = Timeout(5.seconds)
+  "SABReceiveTimeout" - {
+    "receive timeout" in {
+      implicit val timeout: Timeout = Timeout(5 seconds)
       val sabBrokerName1: String    = "broker-1"
       val messageId: String         = "id-1"
       val config: SABBrokerConfig = SABBrokerConfig(
         maxFailures = 9,
         failureTimeout = 10.seconds,
-        backoff = LinealBackoff(1.hour)
+        backoff = ExponentialBackoff(minBackoff = 1 seconds, maxBackoff = 5 seconds, randomFactor = 0.2),
+        receiveTimeout = Some(3 seconds)
       )
       val handler: String => Future[String] = {
         case request if request.length < BoundaryLength  => Future.failed(new Exception(errorMessage))
@@ -54,60 +50,26 @@ class SABBrokerSpec
       val messagePath: ActorPath     = system / sabBrokerName1 / SABSupervisor.name(messageId) / SABActor.name(messageId)
       val messageRef: ActorSelection = system.actorSelection(messagePath)
 
-      When("Long input")
-      Then("return success message")
-      forAll(genLongStr) { value =>
-        val message = SABMessage(messageId, value, handler)
-        (sabBroker ? message).mapTo[String].futureValue shouldBe successMessage
-      }
+      val message1 = SABMessage(messageId, "A" * 50, handler)
+      (sabBroker ? message1).mapTo[String].futureValue shouldBe successMessage
 
-      And("Status Closed")
+      Thread.sleep(1000 * 5)
+
+      (sabBroker ? message1).mapTo[String].futureValue shouldBe successMessage
+
       (messageRef ? SABActor.GetStatus)
         .mapTo[SABStatus].futureValue shouldBe SABStatus.Closed
 
-      When("Short input")
-      Then("return error message")
-      forAll(genShortStr) { value =>
-        val message = SABMessage(messageId, value, handler)
-        (sabBroker ? message).mapTo[String].failed.futureValue.getMessage shouldBe errorMessage
-      }
+      val message2 = SABMessage(messageId, "A" * 49, handler)
+      for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      When("Short input")
-      Then("return failed message")
-      forAll(genShortStr) { value =>
-        val message = SABMessage(messageId, value, handler)
-        (sabBroker ? message).mapTo[String].failed.futureValue.getMessage shouldBe failedMessage
-      }
-
-      And("Status Open")
       (messageRef ? SABActor.GetStatus)
         .mapTo[SABStatus].futureValue shouldBe SABStatus.Open
+
+      (messageRef ? SABActor.GetAttemptRequest(messageId))
+        .mapTo[SABActor.GetAttemptResponse].futureValue.attempt shouldBe 1
+
     }
-
-    scenario("Future is slow in LinealBackoff") {
-
-      Given("broker pattern 2")
-      import system.dispatcher
-      implicit val timeout: Timeout = Timeout(5.seconds)
-      val sabBrokerName2: String    = "broker-2"
-      val messageId: String         = "id-2"
-      val config: SABBrokerConfig = SABBrokerConfig(
-        maxFailures = 9,
-        failureTimeout = 500.milliseconds,
-        backoff = LinealBackoff(1.hour)
-      )
-      val handler: String => Future[String] = _ =>
-        Future {
-          Thread.sleep(1000L)
-          successMessage
-      }
-      val sabBroker: ActorRef = system.actorOf(Props(new SABBroker(config, failedResponse, isFailed)), sabBrokerName2)
-
-      When("input slow handler")
-      val message = SABMessage(messageId, "???", handler)
-      (sabBroker ? message).mapTo[String].futureValue shouldBe successMessage
-    }
-
   }
 
   override implicit def patienceConfig: PatienceConfig =
