@@ -16,7 +16,7 @@ object SABSupervisor {
       config,
       failedResponse = failedResponse,
       isFailed = isFailed,
-      eventHandler = eventHandler,
+      eventHandler = eventHandler
     )
   )
 

@@ -52,7 +52,7 @@ class SABExponentialSpec
                 config,
                 failedResponse = failedResponse,
                 isFailed = isFailed,
-                eventHandler = None,
+                eventHandler = None
               ) {
                 override protected def props(id: ID): Props = Props(
                   config.backoff match {
