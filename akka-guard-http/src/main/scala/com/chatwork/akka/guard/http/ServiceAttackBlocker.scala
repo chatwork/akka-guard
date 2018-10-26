@@ -1,13 +1,13 @@
 package com.chatwork.akka.guard.http
 import akka.actor.{ ActorRef, ActorSystem, Props }
 import akka.http.scaladsl.server.RouteResult
-import com.chatwork.akka.guard.{ ID, SABBroker, SABBrokerConfig, SABStatus }
+import com.chatwork.akka.guard.{ ID, SABBroker, SABConfig, SABStatus }
 
 import scala.util.Try
 
 case class ServiceAttackBlocker(
     system: ActorSystem,
-    sabConfig: SABBrokerConfig,
+    sabConfig: SABConfig,
     actorName: String = "SABBroker"
 )(
     failedResponse: Try[ServiceAttackBlocker.R],

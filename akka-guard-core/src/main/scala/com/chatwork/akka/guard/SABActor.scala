@@ -11,7 +11,7 @@ import scala.util.{ Failure, Success, Try }
 object SABActor {
 
   def props[T, R](id: String,
-                  config: SABBrokerConfig,
+                  config: SABConfig,
                   failedResponse: => Try[R],
                   isFailed: R => Boolean,
                   eventHandler: Option[(ID, SABStatus) => Unit] = None): Props = Props(
@@ -21,7 +21,7 @@ object SABActor {
           id,
           maxFailures = config.maxFailures,
           backoff = b,
-          failureTimeout = config.failureTimeout,
+          failureTimeout = config.failureDuration,
           failedResponse = failedResponse,
           isFailed = isFailed,
           eventHandler = eventHandler
@@ -31,7 +31,7 @@ object SABActor {
           id,
           maxFailures = config.maxFailures,
           backoff = b,
-          failureTimeout = config.failureTimeout,
+          failureTimeout = config.failureDuration,
           failedResponse = failedResponse,
           isFailed = isFailed,
           eventHandler = eventHandler

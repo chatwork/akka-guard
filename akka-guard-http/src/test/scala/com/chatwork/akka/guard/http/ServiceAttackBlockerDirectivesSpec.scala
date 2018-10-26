@@ -6,6 +6,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.pattern.ask
+import akka.testkit.TestKit
 import akka.util.Timeout
 import com.chatwork.akka.guard._
 import org.scalatest.concurrent.ScalaFutures
@@ -29,10 +30,14 @@ class ServiceAttackBlockerDirectivesSpec extends FreeSpec with Matchers with Sca
         }
       }
 
-      messageRef
-        .?(SABActor.GetStatus)
-        .mapTo[SABStatus]
-        .futureValue shouldBe SABStatus.Closed
+      TestKit.awaitCond(
+        messageRef
+          .?(SABActor.GetStatus)
+          .mapTo[SABStatus]
+          .futureValue == SABStatus.Closed,
+        5 seconds,
+        1 second
+      )
 
       (1 to 10).foreach { _ =>
         Get(uri(bad)) ~> routes ~> check {
@@ -40,10 +45,14 @@ class ServiceAttackBlockerDirectivesSpec extends FreeSpec with Matchers with Sca
         }
       }
 
-      messageRef
-        .?(SABActor.GetStatus)
-        .mapTo[SABStatus]
-        .futureValue shouldBe SABStatus.Open
+      TestKit.awaitCond(
+        messageRef
+          .?(SABActor.GetStatus)
+          .mapTo[SABStatus]
+          .futureValue == SABStatus.Open,
+        5 seconds,
+        1 second
+      )
 
       (1 to 10).foreach { _ =>
         Get(uri(bad)) ~> routes ~> check {
@@ -67,10 +76,10 @@ class ServiceAttackBlockerDirectivesSpec extends FreeSpec with Matchers with Sca
       case _                                                         => true
     }
 
-    val sabConfig: SABBrokerConfig =
-      SABBrokerConfig(
+    val sabConfig: SABConfig =
+      SABConfig(
         maxFailures = 9,
-        failureTimeout = 10.seconds,
+        failureDuration = 10.seconds,
         backoff = LinealBackoff(1.hour)
       )
 

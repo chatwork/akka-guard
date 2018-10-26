@@ -7,7 +7,7 @@ import scala.util.Try
 object SABSupervisor {
 
   def props[T, R](id: String,
-                  config: SABBrokerConfig,
+                  config: SABConfig,
                   failedResponse: => Try[R],
                   isFailed: R => Boolean,
                   eventHandler: Option[(ID, SABStatus) => Unit] = None): Props = Props(
@@ -25,7 +25,7 @@ object SABSupervisor {
 }
 
 class SABSupervisor[T, R](id: String,
-                          config: SABBrokerConfig,
+                          config: SABConfig,
                           failedResponse: => Try[R],
                           isFailed: R => Boolean,
                           eventHandler: Option[(ID, SABStatus) => Unit] = None)
@@ -37,7 +37,7 @@ class SABSupervisor[T, R](id: String,
 
   protected def props(id: ID): Props = SABActor.props(id, config, failedResponse, isFailed, eventHandler)
 
-  config.receiveTimeout.foreach(context.setReceiveTimeout)
+  config.guardResetTimeout.foreach(context.setReceiveTimeout)
 
   override def receive: Receive = {
     case ReceiveTimeout =>

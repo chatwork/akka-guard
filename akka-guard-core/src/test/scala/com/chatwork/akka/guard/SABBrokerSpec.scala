@@ -41,9 +41,9 @@ class SABBrokerSpec
       implicit val timeout: Timeout = Timeout(5.seconds)
       val sabBrokerName1: String    = "broker-1"
       val messageId: String         = "id-1"
-      val config: SABBrokerConfig = SABBrokerConfig(
+      val config: SABConfig = SABConfig(
         maxFailures = 9,
-        failureTimeout = 10.seconds,
+        failureDuration = 10.seconds,
         backoff = LinealBackoff(1.hour)
       )
       val handler: String => Future[String] = {
@@ -91,9 +91,9 @@ class SABBrokerSpec
       implicit val timeout: Timeout = Timeout(5.seconds)
       val sabBrokerName2: String    = "broker-2"
       val messageId: String         = "id-2"
-      val config: SABBrokerConfig = SABBrokerConfig(
+      val config: SABConfig = SABConfig(
         maxFailures = 9,
-        failureTimeout = 500.milliseconds,
+        failureDuration = 500.milliseconds,
         backoff = LinealBackoff(1.hour)
       )
       val handler: String => Future[String] = _ =>
