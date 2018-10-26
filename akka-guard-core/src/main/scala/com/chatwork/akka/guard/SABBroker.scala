@@ -5,14 +5,14 @@ import akka.actor._
 import scala.util.Try
 
 class SABBroker[T, R](config: SABBrokerConfig,
-                      failedResponse: Try[R],
+                      failedResponse: => Try[R],
                       isFailed: R => Boolean,
                       eventHandler: Option[(ID, SABStatus) => Unit] = None)
     extends Actor
     with MessageForwarder {
   override type Message = SABMessage[T, R]
 
-  private def props(id: ID) = SABSupervisor.props(id, config, failedResponse, isFailed, eventHandler)
+  protected def props(id: ID): Props = SABSupervisor.props(id, config, failedResponse, isFailed, eventHandler)
 
   override def receive: Receive = {
     case msg: Message =>

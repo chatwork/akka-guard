@@ -8,7 +8,7 @@ object SABSupervisor {
 
   def props[T, R](id: String,
                   config: SABBrokerConfig,
-                  failedResponse: Try[R],
+                  failedResponse: => Try[R],
                   isFailed: R => Boolean,
                   eventHandler: Option[(ID, SABStatus) => Unit] = None): Props = Props(
     new SABSupervisor[T, R](
@@ -26,7 +26,7 @@ object SABSupervisor {
 
 class SABSupervisor[T, R](id: String,
                           config: SABBrokerConfig,
-                          failedResponse: Try[R],
+                          failedResponse: => Try[R],
                           isFailed: R => Boolean,
                           eventHandler: Option[(ID, SABStatus) => Unit] = None)
     extends Actor
@@ -35,7 +35,7 @@ class SABSupervisor[T, R](id: String,
 
   override type Message = SABMessage[T, R]
 
-  private def props(id: ID) = SABActor.props(id, config, failedResponse, isFailed, eventHandler)
+  protected def props(id: ID): Props = SABActor.props(id, config, failedResponse, isFailed, eventHandler)
 
   config.receiveTimeout.foreach(context.setReceiveTimeout)
 
