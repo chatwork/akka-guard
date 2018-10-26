@@ -36,11 +36,11 @@ class SABReceiveTimeoutSpec
       implicit val timeout: Timeout = Timeout(5 seconds)
       val sabBrokerName1: String    = "broker-1"
       val messageId: String         = "id-1"
-      val config: SABBrokerConfig = SABBrokerConfig(
+      val config: SABConfig = SABConfig(
         maxFailures = 9,
-        failureTimeout = 10.seconds,
+        failureDuration = 10.seconds,
         backoff = ExponentialBackoff(minBackoff = 1 seconds, maxBackoff = 5 seconds, randomFactor = 0.2),
-        receiveTimeout = Some(3 seconds)
+        guardResetTimeout = Some(3 seconds)
       )
       val handler: String => Future[String] = {
         case request if request.length < BoundaryLength  => Future.failed(new Exception(errorMessage))

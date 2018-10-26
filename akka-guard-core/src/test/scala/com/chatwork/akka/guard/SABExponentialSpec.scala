@@ -33,9 +33,9 @@ class SABExponentialSpec
       implicit val timeout: Timeout = Timeout(5 seconds)
       val sabBrokerName1: String    = "broker-1"
       val messageId: String         = "id-1"
-      val config: SABBrokerConfig = SABBrokerConfig(
+      val config: SABConfig = SABConfig(
         maxFailures = 9,
-        failureTimeout = 10.seconds,
+        failureDuration = 10.seconds,
         backoff = ExponentialBackoff(minBackoff = 2 seconds, maxBackoff = 10 seconds, randomFactor = 0.2)
       )
       val handler: String => Future[String] = {
@@ -61,7 +61,7 @@ class SABExponentialSpec
                         id,
                         maxFailures = config.maxFailures,
                         backoff = b,
-                        failureTimeout = config.failureTimeout,
+                        failureTimeout = config.failureDuration,
                         failedResponse = failedResponse,
                         isFailed = isFailed,
                         eventHandler = None

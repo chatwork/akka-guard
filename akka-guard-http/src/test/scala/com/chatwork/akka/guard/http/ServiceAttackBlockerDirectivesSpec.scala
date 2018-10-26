@@ -67,10 +67,10 @@ class ServiceAttackBlockerDirectivesSpec extends FreeSpec with Matchers with Sca
       case _                                                         => true
     }
 
-    val sabConfig: SABBrokerConfig =
-      SABBrokerConfig(
+    val sabConfig: SABConfig =
+      SABConfig(
         maxFailures = 9,
-        failureTimeout = 10.seconds,
+        failureDuration = 10.seconds,
         backoff = LinealBackoff(1.hour)
       )
 
