@@ -99,11 +99,11 @@ sealed abstract class SABActor[T, R](
     case _: Message     => reply(Future.fromTry(failedResponse))
   }
 
-  private def commonWithOpen(attempt: Long, failureCount: Long) = common(attempt, failureCount) orElse open
+  private def commonWithOpen(attempt: Long) = common(attempt) orElse open
 
-  private def becomeOpen(attempt: Long, failureCount: Long): Unit = {
+  private def becomeOpen(attempt: Long): Unit = {
     log.debug("become an open")
-    context.become(commonWithOpen(attempt, failureCount))
+    context.become(commonWithOpen(attempt))
     closeCancel = createResetBackoffSchedule(attempt)
     eventHandler.foreach(_.apply(id, SABStatus.Open))
   }
@@ -124,7 +124,7 @@ sealed abstract class SABActor[T, R](
     if (isBoundary(count)) self ! FailureTimeout
   }
 
-  private def common(attempt: Long, failureCount: Long): Receive = {
+  private def common(attempt: Long): Receive = {
     case GetAttemptRequest(_id) =>
       require(_id == id)
       sender() ! GetAttemptResponse(id, attempt)
@@ -138,7 +138,7 @@ sealed abstract class SABActor[T, R](
 
     case FailureTimeout =>
       if (isBoundary(failureCount))
-        becomeOpen(attempt + 1, failureCount)
+        becomeOpen(attempt + 1)
       else
         reset(attempt)
 
@@ -161,7 +161,7 @@ sealed abstract class SABActor[T, R](
   }
 
   private def commonWithClosed(attempt: Long, failureCount: Long) =
-    common(attempt, failureCount) orElse closed(attempt, failureCount)
+    common(attempt) orElse closed(attempt, failureCount)
 
   override def receive: Receive = commonWithClosed(0, 0)
 
