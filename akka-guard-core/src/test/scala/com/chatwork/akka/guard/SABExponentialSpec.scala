@@ -5,10 +5,12 @@ import akka.pattern.ask
 import akka.testkit.{ TestKit, TestProbe }
 import akka.util.Timeout
 import com.chatwork.akka.guard.SABActor.BecameClosed
-import org.scalatest._
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.prop.PropertyChecks
+import org.scalatest.freespec.AnyFreeSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{ Millis, Seconds, Span }
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -16,9 +18,9 @@ import scala.util.{ Failure, Try }
 
 class SABExponentialSpec
     extends TestKit(ActorSystem("SABExponentialSpec"))
-    with FreeSpecLike
+    with AnyFreeSpecLike
     with BeforeAndAfterAll
-    with PropertyChecks
+    with ScalaCheckPropertyChecks
     with Matchers
     with ScalaFutures {
   val BoundaryLength              = 50
@@ -46,36 +48,39 @@ class SABExponentialSpec
       val sabBroker: ActorRef = system.actorOf(
         Props(
           new SABBroker(config, failedResponse, isFailed) {
-            override protected def props(id: ID): Props = Props(
-              new SABSupervisor[String, String](
-                id,
-                config,
-                failedResponse = failedResponse,
-                isFailed = isFailed,
-                eventHandler = None
-              ) {
-                override protected def props(id: ID): Props = Props(
-                  config.backoff match {
-                    case b: ExponentialBackoff =>
-                      new ExponentialBackoffActor[String, String](
-                        id,
-                        maxFailures = config.maxFailures,
-                        backoff = b,
-                        failureTimeout = config.failureDuration,
-                        failedResponse = failedResponse,
-                        isFailed = isFailed,
-                        eventHandler = None
-                      ) {
-                        override protected def createScheduler(delay: FiniteDuration, attempt: Long): Cancellable = {
-                          testProbe.ref ! BecameClosed(attempt, 0, setTimer = true)
-                          Cancellable.alreadyCancelled
-                        }
+            override protected def props(id: ID): Props =
+              Props(
+                new SABSupervisor[String, String](
+                  id,
+                  config,
+                  failedResponse = failedResponse,
+                  isFailed = isFailed,
+                  eventHandler = None
+                ) {
+                  override protected def props(id: ID): Props =
+                    Props(
+                      config.backoff match {
+                        case b: ExponentialBackoff =>
+                          new ExponentialBackoffActor[String, String](
+                            id,
+                            maxFailures = config.maxFailures,
+                            backoff = b,
+                            failureTimeout = config.failureDuration,
+                            failedResponse = failedResponse,
+                            isFailed = isFailed,
+                            eventHandler = None
+                          ) {
+                            override protected def createScheduler(delay: FiniteDuration, attempt: Long)
+                                : Cancellable = {
+                              testProbe.ref ! BecameClosed(attempt, 0, setTimer = true)
+                              Cancellable.alreadyCancelled
+                            }
+                          }
+                        case _: LinealBackoff => fail()
                       }
-                    case _: LinealBackoff => fail()
-                  }
-                )
-              }
-            )
+                    )
+                }
+              )
           }
         ),
         sabBrokerName1

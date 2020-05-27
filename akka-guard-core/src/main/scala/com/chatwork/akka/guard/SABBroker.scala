@@ -4,11 +4,12 @@ import akka.actor._
 
 import scala.util.Try
 
-class SABBroker[T, R](config: SABConfig,
-                      failedResponse: => Try[R],
-                      isFailed: R => Boolean,
-                      eventHandler: Option[(ID, SABStatus) => Unit] = None)
-    extends Actor
+class SABBroker[T, R](
+    config: SABConfig,
+    failedResponse: => Try[R],
+    isFailed: R => Boolean,
+    eventHandler: Option[(ID, SABStatus) => Unit] = None
+) extends Actor
     with MessageForwarder {
   override type Message = SABMessage[T, R]
 

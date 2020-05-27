@@ -1,42 +1,78 @@
 import sbt._
 import sbt.ModuleID
 
-object Scala {
-  val java8Compat = "org.scala-lang.modules" %% "scala-java8-compat" % "0.9.0"
+object ScalaLangModules {
+  val java8Compat      = "org.scala-lang.modules" %% "scala-java8-compat"      % "0.9.1"
+  val collectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.6"
 }
 
 object Circe {
-  val version           = "0.10.0"
-  val core: ModuleID    = "io.circe" %% "circe-core" % version
-  val parser: ModuleID  = "io.circe" %% "circe-parser" % version
-  val generic: ModuleID = "io.circe" %% "circe-generic" % version
+
+  object Version0_11 {
+    val version = "0.11.2"
+    val core    = "io.circe" %% "circe-core"    % version
+    val parser  = "io.circe" %% "circe-parser"  % version
+    val generic = "io.circe" %% "circe-generic" % version
+  }
+
+  object Version0_13 {
+    val version = "0.13.0"
+    val core    = "io.circe" %% "circe-core"    % version
+    val parser  = "io.circe" %% "circe-parser"  % version
+    val generic = "io.circe" %% "circe-generic" % version
+  }
 }
 
 object ScalaTest {
-  val v3_0_5 = "org.scalatest" %% "scalatest" % "3.0.5"
+  val version   = "3.1.2"
+  val scalatest = "org.scalatest" %% "scalatest" % version
+}
+
+object ScalaTestPlus {
+  val version    = "3.1.2.0"
+  val scalacheck = "org.scalatestplus" %% "scalacheck-1-14" % version
 }
 
 object Cats {
-  val v1_4_0 = "org.typelevel" %% "cats-core" % "1.4.0"
+
+  object Version2_0 {
+    val core = "org.typelevel" %% "cats-core" % "2.0.0"
+  }
+
+  object Version2_1 {
+    val core = "org.typelevel" %% "cats-core" % "2.1.1"
+  }
 }
 
 object Enumeratum {
-  val latest = "com.beachape" %% "enumeratum" % "1.5.13"
+  val latest = "com.beachape" %% "enumeratum" % "1.6.1"
 }
 
 object ScalaCheck {
-  val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
+  val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.14.3"
 }
 
 object Akka {
-  val version           = "2.5.12"
-  val actor: ModuleID   = "com.typesafe.akka" %% "akka-actor" % version
-  val testKit: ModuleID = "com.typesafe.akka" %% "akka-testkit" % version
-  val slf4j: ModuleID = "com.typesafe.akka" %% "akka-slf4j" % version
+
+  object Version2_5 {
+    val version = "2.5.31"
+    val actor   = "com.typesafe.akka" %% "akka-actor"   % version
+    val stream  = "com.typesafe.akka" %% "akka-stream"  % version
+    val testKit = "com.typesafe.akka" %% "akka-testkit" % version
+    val slf4j   = "com.typesafe.akka" %% "akka-slf4j"   % version
+  }
+
+  object Version2_6 {
+    val version = "2.6.5"
+    val actor   = "com.typesafe.akka" %% "akka-actor"   % version
+    val stream  = "com.typesafe.akka" %% "akka-stream"  % version
+    val testKit = "com.typesafe.akka" %% "akka-testkit" % version
+    val slf4j   = "com.typesafe.akka" %% "akka-slf4j"   % version
+  }
 }
 
 object AkkaHttp {
-  val version           = "10.1.5"
-  val http: ModuleID    = "com.typesafe.akka" %% "akka-http" % version
-  val testKit: ModuleID = "com.typesafe.akka" %% "akka-http-testkit" % version
+  val version = "10.1.12"
+  val http    = "com.typesafe.akka" %% "akka-http"         % version
+  val testKit = "com.typesafe.akka" %% "akka-http-testkit" % version
 }

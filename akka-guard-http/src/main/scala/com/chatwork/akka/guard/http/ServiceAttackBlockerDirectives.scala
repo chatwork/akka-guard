@@ -10,8 +10,9 @@ import scala.concurrent.duration._
 trait ServiceAttackBlockerDirectives {
   import ServiceAttackBlocker._
 
-  def serviceAttackBlocker(serviceAttackBlocker: ServiceAttackBlocker,
-                           timeout: Timeout = Timeout(3.seconds))(id: String): Directive0 =
+  def serviceAttackBlocker(serviceAttackBlocker: ServiceAttackBlocker, timeout: Timeout = Timeout(3.seconds))(
+      id: String
+  ): Directive0 =
     Directive[T] { inner => ctx =>
       val message: SABMessage[T, R] = SABMessage(id, (), a => inner(a)(ctx))
       serviceAttackBlocker.actorRef.ask(message)(timeout).mapTo[R]

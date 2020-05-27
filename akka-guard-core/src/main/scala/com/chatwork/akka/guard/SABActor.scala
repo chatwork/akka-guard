@@ -10,34 +10,37 @@ import scala.util.{ Failure, Success, Try }
 
 object SABActor {
 
-  def props[T, R](id: String,
-                  config: SABConfig,
-                  failedResponse: => Try[R],
-                  isFailed: R => Boolean,
-                  eventHandler: Option[(ID, SABStatus) => Unit] = None): Props = Props(
-    config.backoff match {
-      case b: ExponentialBackoff =>
-        new ExponentialBackoffActor[T, R](
-          id,
-          maxFailures = config.maxFailures,
-          backoff = b,
-          failureTimeout = config.failureDuration,
-          failedResponse = failedResponse,
-          isFailed = isFailed,
-          eventHandler = eventHandler
-        )
-      case b: LinealBackoff =>
-        new LinealBackoffActor[T, R](
-          id,
-          maxFailures = config.maxFailures,
-          backoff = b,
-          failureTimeout = config.failureDuration,
-          failedResponse = failedResponse,
-          isFailed = isFailed,
-          eventHandler = eventHandler
-        )
-    }
-  )
+  def props[T, R](
+      id: String,
+      config: SABConfig,
+      failedResponse: => Try[R],
+      isFailed: R => Boolean,
+      eventHandler: Option[(ID, SABStatus) => Unit] = None
+  ): Props =
+    Props(
+      config.backoff match {
+        case b: ExponentialBackoff =>
+          new ExponentialBackoffActor[T, R](
+            id,
+            maxFailures = config.maxFailures,
+            backoff = b,
+            failureTimeout = config.failureDuration,
+            failedResponse = failedResponse,
+            isFailed = isFailed,
+            eventHandler = eventHandler
+          )
+        case b: LinealBackoff =>
+          new LinealBackoffActor[T, R](
+            id,
+            maxFailures = config.maxFailures,
+            backoff = b,
+            failureTimeout = config.failureDuration,
+            failedResponse = failedResponse,
+            isFailed = isFailed,
+            eventHandler = eventHandler
+          )
+      }
+    )
 
   def name(id: String): String = s"SABlocker-$id"
 
@@ -146,11 +149,12 @@ sealed abstract class SABActor[T, R](
     case ManualReset         => becomeClosed(attempt = 0, failureCount = failureCount, fireEventHandler = false)
 
     case msg: Message =>
-      val future = try {
-        msg.execute
-      } catch {
-        case NonFatal(cause) => Future.failed(cause)
-      }
+      val future =
+        try {
+          msg.execute
+        } catch {
+          case NonFatal(cause) => Future.failed(cause)
+        }
       future.onComplete {
         case Failure(_)                 => self ! Failed(failureCount)
         case Success(r) if isFailed(r)  => self ! Failed(failureCount)

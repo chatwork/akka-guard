@@ -5,10 +5,12 @@ import akka.pattern.ask
 import akka.testkit.TestKit
 import akka.util.Timeout
 import org.scalacheck.Gen
-import org.scalatest._
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.prop.PropertyChecks
+import org.scalatest.freespec.AnyFreeSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{ Millis, Seconds, Span }
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -16,9 +18,9 @@ import scala.util.{ Failure, Try }
 
 class SABReceiveTimeoutSpec
     extends TestKit(ActorSystem("SABReceiveTimeoutSpec"))
-    with FreeSpecLike
+    with AnyFreeSpecLike
     with BeforeAndAfterAll
-    with PropertyChecks
+    with ScalaCheckPropertyChecks
     with Matchers
     with ScalaFutures {
   val BoundaryLength           = 50
