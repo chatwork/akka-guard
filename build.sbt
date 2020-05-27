@@ -5,8 +5,6 @@ val scala213Version = "2.13.2"
 val commonSettings = Seq(
   sonatypeProfileName := "com.chatwork",
   organization := "com.chatwork",
-  scalaVersion := scala211Version,
-  crossScalaVersions := Seq(scala211Version, scala212Version, scala213Version),
   scalacOptions ++= Seq(
       "-feature",
       "-deprecation",
@@ -32,42 +30,6 @@ val commonSettings = Seq(
       Enumeratum.latest,
       ScalaLangModules.java8Compat
     ),
-  libraryDependencies ++= {
-    CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2L, scalaMajor)) if scalaMajor == 13 =>
-        Seq(
-          Akka.Version2_6.testKit % Test,
-          Cats.Version2_1.core,
-          Circe.Version0_13.core,
-          Circe.Version0_13.generic,
-          Circe.Version0_13.parser,
-          Akka.Version2_6.actor,
-          Akka.Version2_6.slf4j
-        )
-      case Some((2L, scalaMajor)) if scalaMajor == 12 =>
-        Seq(
-          ScalaLangModules.collectionCompat,
-          Akka.Version2_6.testKit % Test,
-          Cats.Version2_1.core,
-          Circe.Version0_13.core,
-          Circe.Version0_13.generic,
-          Circe.Version0_13.parser,
-          Akka.Version2_6.actor,
-          Akka.Version2_6.slf4j
-        )
-      case Some((2L, scalaMajor)) if scalaMajor == 11 =>
-        Seq(
-          ScalaLangModules.collectionCompat,
-          Akka.Version2_5.testKit % Test,
-          Cats.Version2_0.core,
-          Circe.Version0_11.core,
-          Circe.Version0_11.generic,
-          Circe.Version0_11.parser,
-          Akka.Version2_5.actor,
-          Akka.Version2_5.slf4j
-        )
-    }
-  },
   updateOptions := updateOptions.value.withCachedResolution(true),
   parallelExecution in Test := false,
   javaOptions in (Test, run) ++= Seq("-Xms4g", "-Xmx4g", "-Xss10M", "-XX:+CMSClassUnloadingEnabled"),
@@ -106,13 +68,53 @@ val commonSettings = Seq(
 lazy val `akka-guard-core` = (project in file("akka-guard-core"))
   .settings(commonSettings: _*)
   .settings(
-    name := "akka-guard-core"
+    name := "akka-guard-core",
+    scalaVersion := scala211Version,
+    crossScalaVersions := Seq(scala211Version, scala212Version, scala213Version),
+    libraryDependencies ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2L, scalaMajor)) if scalaMajor == 13 =>
+          Seq(
+            Akka.Version2_6.testKit % Test,
+            Cats.Version2_1.core,
+            Circe.Version0_13.core,
+            Circe.Version0_13.generic,
+            Circe.Version0_13.parser,
+            Akka.Version2_6.actor,
+            Akka.Version2_6.slf4j
+          )
+        case Some((2L, scalaMajor)) if scalaMajor == 12 =>
+          Seq(
+            Akka.Version2_6.testKit % Test,
+            ScalaLangModules.collectionCompat,
+            Cats.Version2_1.core,
+            Circe.Version0_13.core,
+            Circe.Version0_13.generic,
+            Circe.Version0_13.parser,
+            Akka.Version2_6.actor,
+            Akka.Version2_6.slf4j
+          )
+        case Some((2L, scalaMajor)) if scalaMajor == 11 =>
+          Seq(
+            Akka.Version2_5.testKit % Test,
+            ScalaLangModules.collectionCompat,
+            Cats.Version2_0.core,
+            Circe.Version0_11.core,
+            Circe.Version0_11.generic,
+            Circe.Version0_11.parser,
+            Akka.Version2_5.actor,
+            Akka.Version2_5.slf4j
+          )
+      }
+    }
   )
 
 lazy val `akka-guard-http` = (project in file("akka-guard-http"))
   .settings(commonSettings: _*)
   .settings(
     name := "akka-guard-http",
+    scalaVersion := scala211Version,
+    crossScalaVersions := Seq(scala211Version, scala212Version, scala213Version),
     libraryDependencies ++= Seq(
         AkkaHttp.testKit % Test,
         AkkaHttp.http
@@ -121,14 +123,17 @@ lazy val `akka-guard-http` = (project in file("akka-guard-http"))
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2L, scalaMajor)) if scalaMajor == 13 =>
           Seq(
+            Akka.Version2_6.testKit % Test,
             Akka.Version2_6.stream
           )
         case Some((2L, scalaMajor)) if scalaMajor == 12 =>
           Seq(
+            Akka.Version2_6.testKit % Test,
             Akka.Version2_6.stream
           )
         case Some((2L, scalaMajor)) if scalaMajor == 11 =>
           Seq(
+            Akka.Version2_5.testKit % Test,
             Akka.Version2_5.stream
           )
       }
@@ -136,9 +141,38 @@ lazy val `akka-guard-http` = (project in file("akka-guard-http"))
   )
   .dependsOn(`akka-guard-core`)
 
+lazy val `akka-guard-core-typed` = (project in file("akka-guard-core-typed"))
+  .settings(commonSettings: _*)
+  .settings(
+    name := "akka-guard-core-typed",
+    scalaVersion := scala213Version,
+    libraryDependencies ++= Seq(
+        Akka.Version2_6.testKitTyped % Test,
+        Cats.Version2_1.core,
+        Circe.Version0_13.core,
+        Circe.Version0_13.generic,
+        Circe.Version0_13.parser,
+        Akka.Version2_6.actorTyped,
+        Akka.Version2_6.slf4j
+      )
+  )
+
+lazy val `akka-guard-http-typed` = (project in file("akka-guard-http-typed"))
+  .settings(commonSettings: _*)
+  .settings(
+    name := "akka-guard-http-typed",
+    scalaVersion := scala213Version,
+    libraryDependencies ++= Seq(
+        AkkaHttp.testKit % Test,
+        AkkaHttp.http,
+        Akka.Version2_6.streamTyped
+      )
+  )
+  .dependsOn(`akka-guard-core-typed`)
+
 lazy val root = (project in file("."))
   .settings(commonSettings: _*)
   .settings(
     name := "akka-guard"
   )
-  .aggregate(`akka-guard-core`, `akka-guard-http`)
+  .aggregate(`akka-guard-core`, `akka-guard-http`, `akka-guard-core-typed`, `akka-guard-http-typed`)
