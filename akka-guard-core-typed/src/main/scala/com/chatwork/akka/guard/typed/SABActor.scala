@@ -115,15 +115,17 @@ object SABActor {
       Behaviors.same
     }
 
+    private def openF: PartialFunction[Command, Behavior[Command]] = {
+      case GetStatus(reply) =>
+        reply ! SABStatus.Open // For debugging
+        Behaviors.same
+      case FailureTimeout => Behaviors.same
+      case _: Message     => reply(Future.fromTry(failedResponse))
+    }
+
     private def open(attempt: Long): Behavior[Command] = {
       Behaviors
-        .receiveMessagePartial(common(attempt) orElse {
-          case GetStatus(reply) =>
-            reply ! SABStatus.Open // For debugging
-            Behaviors.same
-          case FailureTimeout => Behaviors.same
-          case _: Message     => reply(Future.fromTry(failedResponse))
-        }).receiveSignal {
+        .receiveMessagePartial(common(attempt) orElse openF).receiveSignal {
           case (_, PostStop) => postStop()
         }
     }
@@ -162,32 +164,33 @@ object SABActor {
       case StopCommand => Behaviors.stopped
     }
 
+    private def closedF(attempt: Long, failureCount: Long): PartialFunction[Command, Behavior[Command]] = {
+      case GetStatus(reply) =>
+        reply ! SABStatus.Closed // For debugging
+        Behaviors.same
+      case FailureTimeout =>
+        if (isBoundary(failureCount)) becomeOpen(attempt + 1)
+        else reset(attempt)
+      case Failed(failedCount) => fail(attempt, failedCount)
+      //          case ManualReset => becomeClosedF(0, failureCount, false)
+      case msg: Message =>
+        val future =
+          try {
+            msg.execute
+          } catch {
+            case NonFatal(cause) => Future.failed(cause)
+          }
+        future.onComplete {
+          case Failure(_)                 => context.self ! Failed(failureCount)
+          case Success(r) if isFailed(r)  => context.self ! Failed(failureCount)
+          case Success(r) if !isFailed(r) => context.self ! BecameClosed(attempt, 0, setTimer = false)
+        }(context.executionContext)
+        reply(future)
+    }
+
     private def closed(attempt: Long, failureCount: Long): Behavior[Command] = {
-      import context.executionContext
       Behaviors
-        .receiveMessagePartial(common(attempt) orElse {
-          case GetStatus(reply) =>
-            reply ! SABStatus.Closed // For debugging
-            Behaviors.same
-          case FailureTimeout =>
-            if (isBoundary(failureCount)) becomeOpen(attempt + 1)
-            else reset(attempt)
-          case Failed(failedCount) => fail(attempt, failedCount)
-//          case ManualReset => becomeClosedF(0, failureCount, false)
-          case msg: Message =>
-            val future =
-              try {
-                msg.execute
-              } catch {
-                case NonFatal(cause) => Future.failed(cause)
-              }
-            future.onComplete {
-              case Failure(_)                 => context.self ! Failed(failureCount)
-              case Success(r) if isFailed(r)  => context.self ! Failed(failureCount)
-              case Success(r) if !isFailed(r) => context.self ! BecameClosed(attempt, 0, setTimer = false)
-            }
-            reply(future)
-        }).receiveSignal {
+        .receiveMessagePartial(common(attempt) orElse closedF(attempt, failureCount)).receiveSignal {
           case (_, PostStop) => postStop()
         }
     }
