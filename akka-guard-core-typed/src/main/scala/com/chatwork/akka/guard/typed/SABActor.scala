@@ -24,7 +24,7 @@ object SABActor {
 
   //
 
-  sealed trait Command
+  trait Command
 
   case class GetAttemptRequest(id: ID, replyTo: ActorRef[GetAttemptResponse]) extends Command
   case class GetStatus(replyTo: ActorRef[SABStatus])                          extends Command
@@ -32,6 +32,7 @@ object SABActor {
   private[typed] case class BecameClosed(attempt: Long, count: Long, setTimer: Boolean) extends Command
   private[typed] case object FailureTimeout                                             extends Command
   private[typed] case class Failed(failedCount: Long)                                   extends Command
+  private[typed] case class ReplyDone[R](result: Try[R])                                extends Command
 
   sealed trait BackoffReset
   case object ManualReset                                  extends BackoffReset
@@ -111,7 +112,7 @@ object SABActor {
       timers.startSingleTimer(FailureTimeoutCancelKey, FailureTimeout, failureTimeout)
 
     private def reply(future: Future[R]): Behavior[Command] = {
-      context.pipeToSelf(future)(a => ???)
+      context.pipeToSelf(future)(ReplyDone(_))
       Behaviors.same
     }
 
@@ -162,6 +163,12 @@ object SABActor {
         if (b) createFailureTimeoutSchedule()
         becomeClosed(_attempt, _count, fireEventHandler = false)
       case StopCommand => Behaviors.stopped
+      case ReplyDone(result) =>
+        result match {
+          case Success(value) => context.log.debug("reply success. {}", value)
+          case Failure(ex)    => context.log.error("reply failure", ex)
+        }
+        Behaviors.same
     }
 
     private def closedF(attempt: Long, failureCount: Long): PartialFunction[Command, Behavior[Command]] = {
