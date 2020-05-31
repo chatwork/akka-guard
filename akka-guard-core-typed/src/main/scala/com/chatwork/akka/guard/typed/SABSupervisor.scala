@@ -20,7 +20,6 @@ object SABSupervisor {
   def name(id: String): String = s"SABSupervisor-$id"
 
   def apply[T, R](
-      id: String,
       config: SABConfig,
       failedResponse: => Try[R],
       isFailed: R => Boolean,
@@ -28,20 +27,21 @@ object SABSupervisor {
   ): Behavior[Command] =
     Behaviors
       .setup[AnyRef] { context =>
-        val commandForwarder = CommandForwarder[SABActor.Command, SABMessage[T, R]](context)
-        val behavior         = SABActor[T, R](id, config, failedResponse, isFailed, eventHandler)
-
         config.guardResetTimeout.foreach(d => context.setReceiveTimeout(d.toMillis.milli, ReceiveTimeout))
 
         Behaviors.receiveMessage {
           case ReceiveTimeout =>
             context.log.debug("receive timeout")
             Behaviors.stopped
+
           case SABSuperVisorMessage(msg) =>
-            val message = msg.asInstanceOf[SABMessage[T, R]]
+            val message          = msg.asInstanceOf[SABMessage[T, R]]
+            val commandForwarder = CommandForwarder[SABActor.Command, SABMessage[T, R]](context)
+            val behavior         = SABActor[T, R](message.id, config, failedResponse, isFailed, eventHandler)
+            val childName        = SABActor.name(msg.id)
             context
-              .child(SABActor.name(msg.id))
-              .fold(commandForwarder.createAndForward(message, behavior, SABActor.name(msg.id)))(a =>
+              .child(childName)
+              .fold(commandForwarder.createAndForward(message, behavior, childName))(a =>
                 commandForwarder.forwardMsg(message)(a.asInstanceOf[ActorRef[SABActor.Command]])
               )
             Behaviors.same

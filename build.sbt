@@ -81,7 +81,8 @@ lazy val `akka-guard-core` = (project in file("akka-guard-core"))
             Circe.Version0_13.generic,
             Circe.Version0_13.parser,
             Akka.Version2_6.actor,
-            Akka.Version2_6.slf4j
+            Akka.Version2_6.slf4j,
+            Logback.classic
           )
         case Some((2L, scalaMajor)) if scalaMajor == 12 =>
           Seq(
@@ -92,7 +93,8 @@ lazy val `akka-guard-core` = (project in file("akka-guard-core"))
             Circe.Version0_13.generic,
             Circe.Version0_13.parser,
             Akka.Version2_6.actor,
-            Akka.Version2_6.slf4j
+            Akka.Version2_6.slf4j,
+            Logback.classic
           )
         case Some((2L, scalaMajor)) if scalaMajor == 11 =>
           Seq(
@@ -153,7 +155,8 @@ lazy val `akka-guard-core-typed` = (project in file("akka-guard-core-typed"))
         Circe.Version0_13.generic,
         Circe.Version0_13.parser,
         Akka.Version2_6.actorTyped,
-        Akka.Version2_6.slf4j
+        Akka.Version2_6.slf4j,
+        Logback.classic
       )
   )
 

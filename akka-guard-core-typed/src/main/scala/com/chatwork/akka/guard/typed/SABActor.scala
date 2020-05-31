@@ -1,15 +1,16 @@
 package com.chatwork.akka.guard.typed
 
-import akka.actor.typed.{ ActorRef, Behavior, PostStop }
+import akka.actor.typed.receptionist.{ Receptionist, ServiceKey }
 import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, TimerScheduler }
+import akka.actor.typed.{ ActorRef, Behavior, PostStop }
 import com.chatwork.akka.guard.typed.config.{ ExponentialBackoff, LinealBackoff, SABConfig }
 import enumeratum._
 
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
-import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
+import scala.util.{ Failure, Success, Try }
 
 object SABActor {
 
@@ -27,15 +28,15 @@ object SABActor {
 
   sealed trait Command
 
-  case class GetAttemptRequest(id: ID, replyTo: ActorRef[GetAttemptResponse]) extends Command
-  case class GetStatus(replyTo: ActorRef[SABStatus])                          extends Command
+  final case class GetAttemptRequest(id: ID, replyTo: ActorRef[GetAttemptResponse]) extends Command
+  final case class GetStatus(replyTo: ActorRef[SABStatus])                          extends Command
 
-  private[typed] case class BecameClosed(attempt: Long, count: Long, setTimer: Boolean) extends Command
-  private[typed] case object FailureTimeout                                             extends Command
-  private[typed] case class Failed(failedCount: Long)                                   extends Command
-  private[typed] case class ReplyDone[R](result: Try[R])                                extends Command
+  private[typed] final case class BecameClosed(attempt: Long, count: Long, setTimer: Boolean) extends Command
+  private[typed] case object FailureTimeout                                                   extends Command
+  private[typed] final case class Failed(failedCount: Long)                                   extends Command
 
-  case class SABMessage[T, R](id: String, request: T, handler: T => Future[R]) extends Command {
+  case class SABMessage[T, R](id: String, request: T, handler: T => Future[R], replyTo: ActorRef[Try[R]])
+      extends Command {
     def execute: Future[R] = handler(request)
   }
 
@@ -75,6 +76,8 @@ object SABActor {
       }
     }
 
+  private[typed] val SABActorServiceKey: ServiceKey[Command] = ServiceKey[Command]("SABActor") // For debugging
+
   abstract class SABActor[T, R](
       id: ID,
       maxFailures: Long,
@@ -95,11 +98,13 @@ object SABActor {
 
     private def preStart(): Unit = {
       context.log.debug("preStart")
+      context.system.receptionist ! Receptionist.Register(SABActorServiceKey, context.self)
       createFailureTimeoutSchedule()
     }
 
     private def postStop(): Behavior[Command] = {
       context.log.debug("postStop")
+      context.system.receptionist ! Receptionist.Deregister(SABActorServiceKey, context.self)
       timers.cancel(FailureTimeoutCancelKey)
       timers.cancel(CloseCancelKey)
       Behaviors.same
@@ -108,22 +113,25 @@ object SABActor {
     private def createFailureTimeoutSchedule(): Unit =
       timers.startSingleTimer(FailureTimeoutCancelKey, FailureTimeout, failureTimeout)
 
-    private def reply(future: Future[R]): Behavior[Command] = {
-      context.pipeToSelf(future)(ReplyDone(_))
+    private def reply(future: Future[R], reply: ActorRef[Try[R]]): Behavior[Command] = {
+      import akka.actor.typed.scaladsl.adapter._
+      import akka.pattern.pipe
+      pipe(future)(context.executionContext).to(reply.toClassic)
       Behaviors.same
     }
 
-    private def openF: PartialFunction[Command, Behavior[Command]] = {
+    private def open: PartialFunction[Command, Behavior[Command]] = {
       case GetStatus(reply) =>
         reply ! SABStatus.Open // For debugging
         Behaviors.same
       case FailureTimeout => Behaviors.same
-      case _: Message     => reply(Future.fromTry(failedResponse))
+      case msg: Message   => reply(Future.fromTry(failedResponse), msg.replyTo)
     }
 
-    private def open(attempt: Long): Behavior[Command] = {
+    private def commonWithOpen(attempt: Long): Behavior[Command] = {
       Behaviors
-        .receiveMessagePartial(common(attempt) orElse openF).receiveSignal {
+        .receiveMessagePartial(common(attempt) orElse open)
+        .receiveSignal {
           case (_, PostStop) => postStop()
         }
     }
@@ -132,14 +140,13 @@ object SABActor {
       context.log.debug("become an open")
       createResetBackoffSchedule(attempt)(CloseCancelKey)
       eventHandler.foreach(_.apply(id, SABStatus.Open)) // FIXME become後に送りたい
-      open(attempt)
+      commonWithOpen(attempt)
     }
 
-    private def becomeClosed(attempt: Long, failureCount: Long, fireEventHandler: Boolean = true): Behavior[Command] = {
+    private def becomeClosed(attempt: Long, failureCount: Long): Behavior[Command] = {
       context.log.debug(s"become a closed to $failureCount")
-      if (fireEventHandler)
-        eventHandler.foreach(_.apply(id, SABStatus.Closed)) // FIXME become後に送りたい
-      closed(attempt, failureCount)
+      eventHandler.foreach(_.apply(id, SABStatus.Closed)) // FIXME become後に送りたい
+      commonWithClosed(attempt, failureCount)
     }
 
     private val isBoundary: Long => Boolean = _ > this.maxFailures
@@ -148,7 +155,7 @@ object SABActor {
       val count = failureCount + 1
       context.log.debug("failure count is [{}].", count)
       if (isBoundary(count)) context.self ! FailureTimeout // FIXME become後に送りたい
-      becomeClosed(attempt, count, fireEventHandler = false)
+      becomeClosed(attempt, count)
     }
 
     private def common(attempt: Long): PartialFunction[Command, Behavior[Command]] = {
@@ -158,25 +165,22 @@ object SABActor {
         Behaviors.same
       case BecameClosed(_attempt, _count, b) =>
         if (b) createFailureTimeoutSchedule()
-        becomeClosed(_attempt, _count, fireEventHandler = false)
-      case StopCommand => Behaviors.stopped
-      case ReplyDone(result) =>
-        result match {
-          case Success(value) => context.log.debug("reply success. {}", value)
-          case Failure(ex)    => context.log.error("reply failure", ex)
-        }
-        Behaviors.same
+        becomeClosed(_attempt, _count)
+      case StopCommand =>
+        context.log.debug("stop command.")
+        Behaviors.stopped
     }
 
-    private def closedF(attempt: Long, failureCount: Long): PartialFunction[Command, Behavior[Command]] = {
+    private def closed(attempt: Long, failureCount: Long): PartialFunction[Command, Behavior[Command]] = {
       case GetStatus(reply) =>
         reply ! SABStatus.Closed // For debugging
         Behaviors.same
       case FailureTimeout =>
-        if (isBoundary(failureCount)) becomeOpen(attempt + 1)
-        else reset(attempt)
+        if (isBoundary(failureCount))
+          becomeOpen(attempt + 1)
+        else
+          reset(attempt)
       case Failed(failedCount) => fail(attempt, failedCount)
-      //          case ManualReset => becomeClosedF(0, failureCount, false)
       case msg: Message =>
         val future =
           try {
@@ -189,19 +193,20 @@ object SABActor {
           case Success(r) if isFailed(r)  => context.self ! Failed(failureCount)
           case Success(r) if !isFailed(r) => context.self ! BecameClosed(attempt, 0, setTimer = false)
         }(context.executionContext)
-        reply(future)
+        reply(future, msg.replyTo)
     }
 
-    private def closed(attempt: Long, failureCount: Long): Behavior[Command] = {
+    private def commonWithClosed(attempt: Long, failureCount: Long): Behavior[Command] = {
       Behaviors
-        .receiveMessagePartial(common(attempt) orElse closedF(attempt, failureCount)).receiveSignal {
+        .receiveMessagePartial(common(attempt) orElse closed(attempt, failureCount))
+        .receiveSignal {
           case (_, PostStop) => postStop()
         }
     }
 
     def behavior: Behavior[Command] = {
       preStart()
-      closed(0, 0)
+      commonWithClosed(0, 0)
     }
   }
 
@@ -236,7 +241,10 @@ object SABActor {
             override protected def createResetBackoffSchedule(attempt: Long)(key: Any): Unit =
               timers.startSingleTimer(key, StopCommand, backoff.toDuration(attempt))
 
-            override protected def reset(attempt: Long): Behavior[Command] = Behaviors.stopped
+            override protected def reset(attempt: Long): Behavior[Command] = {
+              context.log.debug("reset")
+              Behaviors.stopped
+            }
           }
           actor.behavior
         }

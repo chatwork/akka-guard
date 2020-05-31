@@ -79,3 +79,8 @@ object AkkaHttp {
   val http    = "com.typesafe.akka" %% "akka-http"         % version
   val testKit = "com.typesafe.akka" %% "akka-http-testkit" % version
 }
+
+object Logback {
+  val version = "1.2.3"
+  val classic = "ch.qos.logback" % "logback-classic" % version
+}

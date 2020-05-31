@@ -1,0 +1,30 @@
+<configuration>
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%level] [%date{ISO8601}] [%thread] [%logger{36}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="akka" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%level] [%date{ISO8601}] [%X{sourceThread}] [%logger{36}] [%X{akkaSource}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="async" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="console" />
+    </appender>
+
+    <appender name="akka-async" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="akka" />
+    </appender>
+
+    <logger name="akka.actor" level="ERROR" additivity="false">
+        <appender-ref ref="akka-async" />
+    </logger>
+
+    <root level="DEBUG">
+        <appender-ref ref="akka-async"/>
+    </root>
+
+</configuration>
