@@ -1,8 +1,6 @@
-package com.chatwork.akka.guard.typed
+package com.chatwork.akka.guard.typed.config
 
 import java.util.concurrent.ThreadLocalRandom
-
-import com.chatwork.akka.guard.typed.SABActor.{ AutoReset, BackoffReset }
 
 import scala.concurrent.duration.{ Duration, FiniteDuration }
 

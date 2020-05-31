@@ -1,4 +1,4 @@
-package com.chatwork.akka.guard.typed
+package com.chatwork.akka.guard.typed.config
 
 import enumeratum._
 

@@ -2,6 +2,7 @@ package com.chatwork.akka.guard.typed
 
 import akka.actor.typed.{ ActorRef, Behavior, PostStop }
 import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, TimerScheduler }
+import com.chatwork.akka.guard.typed.config.{ ExponentialBackoff, LinealBackoff, SABConfig }
 import enumeratum._
 
 import scala.collection.immutable
@@ -24,7 +25,7 @@ object SABActor {
 
   //
 
-  trait Command
+  sealed trait Command
 
   case class GetAttemptRequest(id: ID, replyTo: ActorRef[GetAttemptResponse]) extends Command
   case class GetStatus(replyTo: ActorRef[SABStatus])                          extends Command
@@ -33,10 +34,6 @@ object SABActor {
   private[typed] case object FailureTimeout                                             extends Command
   private[typed] case class Failed(failedCount: Long)                                   extends Command
   private[typed] case class ReplyDone[R](result: Try[R])                                extends Command
-
-  sealed trait BackoffReset
-  case object ManualReset                                  extends BackoffReset
-  final case class AutoReset(resetBackoff: FiniteDuration) extends BackoffReset
 
   case class SABMessage[T, R](id: String, request: T, handler: T => Future[R]) extends Command {
     def execute: Future[R] = handler(request)

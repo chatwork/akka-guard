@@ -3,7 +3,7 @@ package com.chatwork.akka.guard.typed
 import akka.actor.typed.scaladsl.ActorContext
 import akka.actor.typed.{ ActorRef, Behavior }
 
-case class CommandForwarder[Command, Message <: Command](context: ActorContext[Command]) {
+case class CommandForwarder[Command, Message <: Command](context: ActorContext[AnyRef]) {
 
   def forwardMsg(msg: Message)(childRef: ActorRef[Command]): Unit =
     childRef ! msg
