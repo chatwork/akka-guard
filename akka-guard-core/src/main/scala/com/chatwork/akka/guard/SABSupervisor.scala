@@ -6,30 +6,34 @@ import scala.util.Try
 
 object SABSupervisor {
 
-  def props[T, R](id: String,
-                  config: SABConfig,
-                  failedResponse: => Try[R],
-                  isFailed: R => Boolean,
-                  eventHandler: Option[(ID, SABStatus) => Unit] = None): Props = Props(
-    new SABSupervisor[T, R](
-      id,
-      config,
-      failedResponse = failedResponse,
-      isFailed = isFailed,
-      eventHandler = eventHandler
+  def props[T, R](
+      id: String,
+      config: SABConfig,
+      failedResponse: => Try[R],
+      isFailed: R => Boolean,
+      eventHandler: Option[(ID, SABStatus) => Unit] = None
+  ): Props =
+    Props(
+      new SABSupervisor[T, R](
+        id,
+        config,
+        failedResponse = failedResponse,
+        isFailed = isFailed,
+        eventHandler = eventHandler
+      )
     )
-  )
 
   def name(id: String): String = s"SABSupervisor-$id"
 
 }
 
-class SABSupervisor[T, R](id: String,
-                          config: SABConfig,
-                          failedResponse: => Try[R],
-                          isFailed: R => Boolean,
-                          eventHandler: Option[(ID, SABStatus) => Unit] = None)
-    extends Actor
+class SABSupervisor[T, R](
+    id: String,
+    config: SABConfig,
+    failedResponse: => Try[R],
+    isFailed: R => Boolean,
+    eventHandler: Option[(ID, SABStatus) => Unit] = None
+) extends Actor
     with ActorLogging
     with MessageForwarder {
 

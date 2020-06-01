@@ -5,10 +5,12 @@ import akka.pattern.ask
 import akka.testkit.TestKit
 import akka.util.Timeout
 import org.scalacheck.Gen
-import org.scalatest._
+import org.scalatest.{ BeforeAndAfterAll, GivenWhenThen }
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.prop.PropertyChecks
+import org.scalatest.featurespec.AnyFeatureSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{ Millis, Seconds, Span }
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -16,10 +18,10 @@ import scala.util.{ Failure, Try }
 
 class SABBrokerSpec
     extends TestKit(ActorSystem("SABBrokerSpec"))
-    with FeatureSpecLike
+    with AnyFeatureSpecLike
     with BeforeAndAfterAll
     with GivenWhenThen
-    with PropertyChecks
+    with ScalaCheckPropertyChecks
     with Matchers
     with ScalaFutures {
 
@@ -33,9 +35,9 @@ class SABBrokerSpec
   val failedResponse: Try[String] = Failure(new Exception(failedMessage))
   val isFailed: String => Boolean = _ => false
 
-  feature("SABBrokerSpec") {
+  Feature("SABBrokerSpec") {
 
-    scenario("Success in LinealBackoff") {
+    Scenario("Success in LinealBackoff") {
 
       Given("broker pattern 1")
       implicit val timeout: Timeout = Timeout(5.seconds)
@@ -84,7 +86,7 @@ class SABBrokerSpec
         .mapTo[SABStatus].futureValue shouldBe SABStatus.Open
     }
 
-    scenario("Future is slow in LinealBackoff") {
+    Scenario("Future is slow in LinealBackoff") {
 
       Given("broker pattern 2")
       import system.dispatcher
@@ -100,7 +102,7 @@ class SABBrokerSpec
         Future {
           Thread.sleep(1000L)
           successMessage
-      }
+        }
       val sabBroker: ActorRef = system.actorOf(Props(new SABBroker(config, failedResponse, isFailed)), sabBrokerName2)
 
       When("input slow handler")

@@ -1,42 +1,73 @@
+val scala211Version = "2.11.12"
+val scala212Version = "2.12.11"
+val scala213Version = "2.13.2"
+
 val commonSettings = Seq(
   sonatypeProfileName := "com.chatwork",
   organization := "com.chatwork",
-  scalaVersion := "2.12.7",
-  crossScalaVersions := Seq("2.11.11", "2.12.7"),
+  scalaVersion := scala211Version,
+  crossScalaVersions := Seq(scala211Version, scala212Version, scala213Version),
   scalacOptions ++= Seq(
-    "-feature",
-    "-deprecation",
-    "-unchecked",
-    "-encoding",
-    "UTF-8",
-    "-language:_"
-  ) ++ {
+      "-feature",
+      "-deprecation",
+      "-unchecked",
+      "-encoding",
+      "UTF-8",
+      "-language:_"
+    ) ++ {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2L, scalaMajor)) if scalaMajor == 13 => Seq.empty
+        case Some((2L, scalaMajor)) if scalaMajor == 12 => Seq.empty
+        case Some((2L, scalaMajor)) if scalaMajor <= 11 => Seq("-Yinline-warnings")
+      }
+    },
+  resolvers ++= Seq(
+      Resolver.sonatypeRepo("snapshots"),
+      Resolver.sonatypeRepo("releases")
+    ),
+  libraryDependencies ++= Seq(
+      ScalaTest.scalatest      % Test,
+      ScalaTestPlus.scalacheck % Test,
+      ScalaCheck.scalaCheck    % Test,
+      Enumeratum.latest,
+      ScalaLangModules.java8Compat
+    ),
+  libraryDependencies ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2L, scalaMajor)) if scalaMajor == 12 =>
-        Seq.empty
-      case Some((2L, scalaMajor)) if scalaMajor <= 11 =>
+      case Some((2L, scalaMajor)) if scalaMajor == 13 =>
         Seq(
-          "-Yinline-warnings"
+          Akka.Version2_6.testKit % Test,
+          Cats.Version2_1.core,
+          Circe.Version0_13.core,
+          Circe.Version0_13.generic,
+          Circe.Version0_13.parser,
+          Akka.Version2_6.actor,
+          Akka.Version2_6.slf4j
+        )
+      case Some((2L, scalaMajor)) if scalaMajor == 12 =>
+        Seq(
+          ScalaLangModules.collectionCompat,
+          Akka.Version2_6.testKit % Test,
+          Cats.Version2_1.core,
+          Circe.Version0_13.core,
+          Circe.Version0_13.generic,
+          Circe.Version0_13.parser,
+          Akka.Version2_6.actor,
+          Akka.Version2_6.slf4j
+        )
+      case Some((2L, scalaMajor)) if scalaMajor == 11 =>
+        Seq(
+          ScalaLangModules.collectionCompat,
+          Akka.Version2_5.testKit % Test,
+          Cats.Version2_0.core,
+          Circe.Version0_11.core,
+          Circe.Version0_11.generic,
+          Circe.Version0_11.parser,
+          Akka.Version2_5.actor,
+          Akka.Version2_5.slf4j
         )
     }
   },
-  resolvers ++= Seq(
-    "Sonatype OSS Snapshot Repository" at "https://oss.sonatype.org/content/repositories/snapshots/",
-    "Sonatype OSS Release Repository" at "https://oss.sonatype.org/content/repositories/releases/"
-  ),
-  libraryDependencies ++= Seq(
-    ScalaTest.v3_0_5      % Test,
-    ScalaCheck.scalaCheck % Test,
-    Akka.testKit          % Test,
-    Cats.v1_4_0,
-    Enumeratum.latest,
-    Scala.java8Compat,
-    Circe.core,
-    Circe.generic,
-    Circe.parser,
-    Akka.actor,
-    Akka.slf4j
-  ),
   updateOptions := updateOptions.value.withCachedResolution(true),
   parallelExecution in Test := false,
   javaOptions in (Test, run) ++= Seq("-Xms4g", "-Xmx4g", "-Xss10M", "-XX:+CMSClassUnloadingEnabled"),
@@ -83,9 +114,25 @@ lazy val `akka-guard-http` = (project in file("akka-guard-http"))
   .settings(
     name := "akka-guard-http",
     libraryDependencies ++= Seq(
-      AkkaHttp.testKit % Test,
-      AkkaHttp.http
-    )
+        AkkaHttp.testKit % Test,
+        AkkaHttp.http
+      ),
+    libraryDependencies ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2L, scalaMajor)) if scalaMajor == 13 =>
+          Seq(
+            Akka.Version2_6.stream
+          )
+        case Some((2L, scalaMajor)) if scalaMajor == 12 =>
+          Seq(
+            Akka.Version2_6.stream
+          )
+        case Some((2L, scalaMajor)) if scalaMajor == 11 =>
+          Seq(
+            Akka.Version2_5.stream
+          )
+      }
+    }
   )
   .dependsOn(`akka-guard-core`)
 
