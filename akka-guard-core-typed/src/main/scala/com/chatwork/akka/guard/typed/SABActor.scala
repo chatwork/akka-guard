@@ -76,7 +76,7 @@ object SABActor {
       }
     }
 
-  private[typed] val SABActorServiceKey: ServiceKey[Command] = ServiceKey[Command]("SABActor") // For debugging
+  val SABActorServiceKey: ServiceKey[Command] = ServiceKey[Command]("SABActor") // For debugging
 
   abstract class SABActor[T, R](
       id: ID,

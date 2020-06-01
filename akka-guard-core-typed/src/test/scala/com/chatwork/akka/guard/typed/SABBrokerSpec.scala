@@ -6,7 +6,6 @@ import akka.actor.typed.receptionist.Receptionist
 import akka.util.Timeout
 import com.chatwork.akka.guard.typed.SABActor.{ GetStatus, SABMessage, SABStatus }
 import com.chatwork.akka.guard.typed.SABBroker.SABBrokerMessage
-import com.chatwork.akka.guard.typed.SABSupervisor.SABSupervisorMessage
 import com.chatwork.akka.guard.typed.config.{ LinealBackoff, SABConfig }
 import org.scalacheck.Gen
 import org.scalatest.concurrent.ScalaFutures
@@ -73,7 +72,7 @@ class SABBrokerSpec
       val sabBroker: ActorRef[SABBroker.Command] = testKit.spawn(sabBrokerBehavior, sabBrokerName1)
 
       def createMessage(value: String): ActorRef[Try[R]] => SABBrokerMessage[T, R] =
-        reply => SABBrokerMessage(SABSupervisorMessage(SABMessage(messageId, value, handler, reply)))
+        reply => SABBrokerMessage(SABMessage(messageId, value, handler, reply))
 
       When("Long input")
       Then("return success message")
@@ -135,7 +134,7 @@ class SABBrokerSpec
       val sabBroker: ActorRef[SABBroker.Command] = testKit.spawn(sabBrokerBehavior, sabBrokerName2)
 
       def createMessage(value: String): ActorRef[Try[R]] => SABBrokerMessage[T, R] =
-        reply => SABBrokerMessage(SABSupervisorMessage(SABMessage(messageId, value, handler, reply)))
+        reply => SABBrokerMessage(SABMessage(messageId, value, handler, reply))
 
       When("input slow handler")
       sabBroker.ask[Try[R]](createMessage("???")(_)).futureValue shouldBe successMessage

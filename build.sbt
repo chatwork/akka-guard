@@ -125,17 +125,20 @@ lazy val `akka-guard-http` = (project in file("akka-guard-http"))
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2L, scalaMajor)) if scalaMajor == 13 =>
           Seq(
-            Akka.Version2_6.testKit % Test,
+            Akka.Version2_6.testKit       % Test,
+            Akka.Version2_6.streamTestKit % Test,
             Akka.Version2_6.stream
           )
         case Some((2L, scalaMajor)) if scalaMajor == 12 =>
           Seq(
-            Akka.Version2_6.testKit % Test,
+            Akka.Version2_6.testKit       % Test,
+            Akka.Version2_6.streamTestKit % Test,
             Akka.Version2_6.stream
           )
         case Some((2L, scalaMajor)) if scalaMajor == 11 =>
           Seq(
-            Akka.Version2_5.testKit % Test,
+            Akka.Version2_5.testKit       % Test,
+            Akka.Version2_5.streamTestKit % Test,
             Akka.Version2_5.stream
           )
       }
@@ -166,7 +169,9 @@ lazy val `akka-guard-http-typed` = (project in file("akka-guard-http-typed"))
     name := "akka-guard-http-typed",
     scalaVersion := scala213Version,
     libraryDependencies ++= Seq(
-        AkkaHttp.testKit % Test,
+        AkkaHttp.testKit              % Test,
+        Akka.Version2_6.streamTestKit % Test,
+        Akka.Version2_6.testKitTyped  % Test,
         AkkaHttp.http,
         Akka.Version2_6.streamTyped
       )

@@ -7,7 +7,6 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.util.Timeout
 import com.chatwork.akka.guard.typed.SABActor.{ BecameClosed, SABMessage, SABStatus }
 import com.chatwork.akka.guard.typed.SABBroker.SABBrokerMessage
-import com.chatwork.akka.guard.typed.SABSupervisor.SABSupervisorMessage
 import com.chatwork.akka.guard.typed.config.{ ExponentialBackoff, LinealBackoff, SABConfig }
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
@@ -93,7 +92,7 @@ class SABExponentialSpec
       val sabBroker = testKit.spawn(sabBrokerBehavior, sabBrokerName1)
 
       def createMessage(value: String): ActorRef[Try[R]] => SABBrokerMessage[T, R] =
-        reply => SABBrokerMessage(SABSupervisorMessage(SABMessage(messageId, value, handler, reply)))
+        reply => SABBrokerMessage(SABMessage(messageId, value, handler, reply))
 
       def invokeMessageRef(messageRef: ActorRef[SABActor.Command] => Unit): Unit = {
         val probe = testKit.createTestProbe[Receptionist.Listing]
