@@ -3,7 +3,7 @@ package com.chatwork.akka.guard.typed
 import akka.actor.typed.receptionist.{ Receptionist, ServiceKey }
 import akka.actor.typed.scaladsl.{ ActorContext, Behaviors, TimerScheduler }
 import akka.actor.typed.{ ActorRef, Behavior, PostStop }
-import com.chatwork.akka.guard.typed.config.{ ExponentialBackoff, LinealBackoff, SABConfig }
+import com.chatwork.akka.guard.typed.config.{ AutoReset, ExponentialBackoff, LinealBackoff, SABConfig }
 import enumeratum._
 
 import scala.collection.immutable
@@ -110,7 +110,7 @@ object SABActor {
       Behaviors.same
     }
 
-    private def createFailureTimeoutSchedule(): Unit =
+    protected def createFailureTimeoutSchedule(): Unit =
       timers.startSingleTimer(FailureTimeoutCancelKey, FailureTimeout, failureTimeout)
 
     private def reply(future: Future[R], reply: ActorRef[Try[R]]): Behavior[Command] = {
@@ -143,7 +143,7 @@ object SABActor {
       commonWithOpen(attempt)
     }
 
-    private def becomeClosed(attempt: Long, failureCount: Long): Behavior[Command] = {
+    protected def becomeClosed(attempt: Long, failureCount: Long): Behavior[Command] = {
       context.log.debug(s"become a closed to $failureCount")
       eventHandler.foreach(_.apply(id, SABStatus.Closed)) // FIXME become後に送りたい
       commonWithClosed(attempt, failureCount)
@@ -210,6 +210,45 @@ object SABActor {
     }
   }
 
+  class ExponentialBackoffActor[T, R](
+      id: ID,
+      maxFailures: Long,
+      backoff: ExponentialBackoff,
+      failureTimeout: FiniteDuration,
+      failedResponse: => Try[R],
+      isFailed: R => Boolean,
+      eventHandler: Option[(ID, SABStatus) => Unit]
+  )(implicit
+      context: ActorContext[Command],
+      timers: TimerScheduler[Command]
+  ) extends SABActor[T, R](id, maxFailures, failureTimeout, failedResponse, isFailed, eventHandler) {
+
+    protected def createScheduler(delay: FiniteDuration, attempt: Long)(key: Any): Unit =
+      timers.startSingleTimer(key, BecameClosed(attempt, 0, setTimer = true), delay)
+
+    private def createResetBackoffSchedule(key: Any): Unit = {
+      backoff.backoffReset match {
+        case AutoReset(resetBackoff) =>
+          createScheduler(resetBackoff, 0)(key)
+        case _ =>
+          ()
+      }
+    }
+
+    override protected def createResetBackoffSchedule(attempt: Long)(key: Any): Unit = {
+      val d = backoff.toDuration(attempt)
+      if (backoff.maxBackoff <= d)
+        createResetBackoffSchedule(key)
+      else
+        createScheduler(d, attempt)(key)
+    }
+
+    override protected def reset(attempt: Long): Behavior[Command] = {
+      createFailureTimeoutSchedule()
+      becomeClosed(attempt, failureCount = 0)
+    }
+  }
+
   object ExponentialBackoffActor {
 
     def apply[T, R](
@@ -220,7 +259,44 @@ object SABActor {
         failedResponse: => Try[R],
         isFailed: R => Boolean,
         eventHandler: Option[(ID, SABStatus) => Unit]
-    ): Behavior[Command] = ???
+    ): Behavior[Command] =
+      Behaviors.setup { implicit context =>
+        Behaviors.withTimers { implicit timers =>
+          val actor = new ExponentialBackoffActor[T, R](
+            id,
+            maxFailures,
+            backoff,
+            failureTimeout,
+            failedResponse,
+            isFailed,
+            eventHandler
+          )
+          actor.behavior
+        }
+
+      }
+  }
+
+  class LinealBackoffActor[T, R](
+      id: ID,
+      maxFailures: Long,
+      backoff: LinealBackoff,
+      failureTimeout: FiniteDuration,
+      failedResponse: => Try[R],
+      isFailed: R => Boolean,
+      eventHandler: Option[(ID, SABStatus) => Unit]
+  )(implicit
+      context: ActorContext[Command],
+      timers: TimerScheduler[Command]
+  ) extends SABActor[T, R](id, maxFailures, failureTimeout, failedResponse, isFailed, eventHandler) {
+
+    override protected def createResetBackoffSchedule(attempt: Long)(key: Any): Unit =
+      timers.startSingleTimer(key, StopCommand, backoff.toDuration(attempt))
+
+    override protected def reset(attempt: Long): Behavior[Command] = {
+      context.log.debug("reset")
+      Behaviors.stopped
+    }
   }
 
   object LinealBackoffActor {
@@ -236,16 +312,15 @@ object SABActor {
     ): Behavior[Command] =
       Behaviors.setup { implicit context =>
         Behaviors.withTimers { implicit timers =>
-          val actor = new SABActor[T, R](id, maxFailures, failureTimeout, failedResponse, isFailed, eventHandler) {
-
-            override protected def createResetBackoffSchedule(attempt: Long)(key: Any): Unit =
-              timers.startSingleTimer(key, StopCommand, backoff.toDuration(attempt))
-
-            override protected def reset(attempt: Long): Behavior[Command] = {
-              context.log.debug("reset")
-              Behaviors.stopped
-            }
-          }
+          val actor = new LinealBackoffActor[T, R](
+            id,
+            maxFailures,
+            backoff,
+            failureTimeout,
+            failedResponse,
+            isFailed,
+            eventHandler
+          )
           actor.behavior
         }
       }
