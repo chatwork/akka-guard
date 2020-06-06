@@ -55,19 +55,24 @@ object ScalaCheck {
 object Akka {
 
   object Version2_5 {
-    val version = "2.5.31"
-    val actor   = "com.typesafe.akka" %% "akka-actor"   % version
-    val stream  = "com.typesafe.akka" %% "akka-stream"  % version
-    val testKit = "com.typesafe.akka" %% "akka-testkit" % version
-    val slf4j   = "com.typesafe.akka" %% "akka-slf4j"   % version
+    val version       = "2.5.31"
+    val actor         = "com.typesafe.akka" %% "akka-actor"          % version
+    val stream        = "com.typesafe.akka" %% "akka-stream"         % version
+    val slf4j         = "com.typesafe.akka" %% "akka-slf4j"          % version
+    val testKit       = "com.typesafe.akka" %% "akka-testkit"        % version
+    val streamTestKit = "com.typesafe.akka" %% "akka-stream-testkit" % version
   }
 
   object Version2_6 {
-    val version = "2.6.5"
-    val actor   = "com.typesafe.akka" %% "akka-actor"   % version
-    val stream  = "com.typesafe.akka" %% "akka-stream"  % version
-    val testKit = "com.typesafe.akka" %% "akka-testkit" % version
-    val slf4j   = "com.typesafe.akka" %% "akka-slf4j"   % version
+    val version       = "2.6.5"
+    val actor         = "com.typesafe.akka" %% "akka-actor"               % version
+    val stream        = "com.typesafe.akka" %% "akka-stream"              % version
+    val slf4j         = "com.typesafe.akka" %% "akka-slf4j"               % version
+    val actorTyped    = "com.typesafe.akka" %% "akka-actor-typed"         % version
+    val streamTyped   = "com.typesafe.akka" %% "akka-stream-typed"        % version
+    val testKit       = "com.typesafe.akka" %% "akka-testkit"             % version
+    val streamTestKit = "com.typesafe.akka" %% "akka-stream-testkit"      % version
+    val testKitTyped  = "com.typesafe.akka" %% "akka-actor-testkit-typed" % version
   }
 }
 
@@ -75,4 +80,9 @@ object AkkaHttp {
   val version = "10.1.12"
   val http    = "com.typesafe.akka" %% "akka-http"         % version
   val testKit = "com.typesafe.akka" %% "akka-http-testkit" % version
+}
+
+object Logback {
+  val version = "1.2.3"
+  val classic = "ch.qos.logback" % "logback-classic" % version
 }
