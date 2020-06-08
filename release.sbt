@@ -16,7 +16,10 @@ releaseProcess := Seq[ReleaseStep](
     },
     enableCrossBuild = true
   ),
-  releaseStepCommandAndRemaining("+publishSigned"),
+  releaseStepCommandAndRemaining("akka-guard-core/+publishSigned"),
+  releaseStepCommandAndRemaining("akka-guard-http/+publishSigned"),
+  releaseStepCommandAndRemaining("akka-guard-core-typed/publishSigned"),
+  releaseStepCommandAndRemaining("akka-guard-http-typed/publishSigned"),
   releaseStepCommand("sonatypeBundleRelease"),
   setNextVersion,
   commitNextVersion,
