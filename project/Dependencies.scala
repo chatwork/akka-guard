@@ -3,7 +3,7 @@ import sbt.ModuleID
 
 object ScalaLangModules {
   val java8Compat      = "org.scala-lang.modules" %% "scala-java8-compat"      % "0.9.1"
-  val collectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.6"
+  val collectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.2.0"
 }
 
 object Circe {
