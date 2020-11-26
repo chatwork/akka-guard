@@ -16,17 +16,16 @@ object SABBroker {
   def apply[T, R](behavior: Behavior[SABSupervisor.Command]): Behavior[Command] =
     Behaviors
       .setup[AnyRef] { context =>
-        Behaviors.receiveMessage {
-          case SABBrokerMessage(msg) =>
-            val message          = SABSupervisorMessage(msg.asInstanceOf[SABMessage[T, R]])
-            val commandForwarder = CommandForwarder[SABSupervisor.Command, SABSupervisorMessage[T, R]](context)
-            val childName        = SABSupervisor.name(message.id)
-            context
-              .child(childName)
-              .fold(commandForwarder.createAndForward(message, behavior, childName))(a =>
-                commandForwarder.forwardMsg(message)(a.asInstanceOf[ActorRef[SABSupervisor.Command]])
-              )
-            Behaviors.same
+        Behaviors.receiveMessage { case SABBrokerMessage(msg) =>
+          val message          = SABSupervisorMessage(msg.asInstanceOf[SABMessage[T, R]])
+          val commandForwarder = CommandForwarder[SABSupervisor.Command, SABSupervisorMessage[T, R]](context)
+          val childName        = SABSupervisor.name(message.id)
+          context
+            .child(childName)
+            .fold(commandForwarder.createAndForward(message, behavior, childName))(a =>
+              commandForwarder.forwardMsg(message)(a.asInstanceOf[ActorRef[SABSupervisor.Command]])
+            )
+          Behaviors.same
         }
       }.narrow[Command]
 
