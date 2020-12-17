@@ -49,7 +49,7 @@ object Enumeratum {
 }
 
 object ScalaCheck {
-  val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.15.1"
+  val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.15.2"
 }
 
 object Akka {
