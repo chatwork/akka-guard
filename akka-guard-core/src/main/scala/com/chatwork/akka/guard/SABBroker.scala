@@ -15,11 +15,10 @@ class SABBroker[T, R](
 
   protected def props(id: ID): Props = SABSupervisor.props(id, config, failedResponse, isFailed, eventHandler)
 
-  override def receive: Receive = {
-    case msg: Message =>
-      context
-        .child(SABSupervisor.name(msg.id))
-        .fold(createAndForward(msg, msg.id, props(msg.id), SABSupervisor.name(msg.id)))(forwardMsg(msg))
+  override def receive: Receive = { case msg: Message =>
+    context
+      .child(SABSupervisor.name(msg.id))
+      .fold(createAndForward(msg, msg.id, props(msg.id), SABSupervisor.name(msg.id)))(forwardMsg(msg))
   }
 
 }

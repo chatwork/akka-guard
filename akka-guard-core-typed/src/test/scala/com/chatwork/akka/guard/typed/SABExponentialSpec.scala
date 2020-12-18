@@ -66,24 +66,23 @@ class SABExponentialSpec
         SABSupervisor(config) { (message: SABMessage[T, R]) =>
           config.backoff match {
             case b: ExponentialBackoff =>
-              Behaviors.setup {
-                implicit context =>
-                  Behaviors.withTimers { implicit timers =>
-                    val actor = new SABActor.ExponentialBackoffActor[T, R](
-                      message.id,
-                      maxFailures = config.maxFailures,
-                      backoff = b,
-                      failureTimeout = config.failureDuration,
-                      failedResponse,
-                      isFailed,
-                      eventHandler = None
-                    ) {
-                      override protected def createScheduler(delay: FiniteDuration, attempt: Long)(key: Any): Unit = {
-                        testProbe.ref ! BecameClosed(attempt, 0, setTimer = true)
-                      }
+              Behaviors.setup { implicit context =>
+                Behaviors.withTimers { implicit timers =>
+                  val actor = new SABActor.ExponentialBackoffActor[T, R](
+                    message.id,
+                    maxFailures = config.maxFailures,
+                    backoff = b,
+                    failureTimeout = config.failureDuration,
+                    failedResponse,
+                    isFailed,
+                    eventHandler = None
+                  ) {
+                    override protected def createScheduler(delay: FiniteDuration, attempt: Long)(key: Any): Unit = {
+                      testProbe.ref ! BecameClosed(attempt, 0, setTimer = true)
                     }
-                    actor.behavior
                   }
+                  actor.behavior
+                }
               }
             case _: LinealBackoff => fail()
           }
