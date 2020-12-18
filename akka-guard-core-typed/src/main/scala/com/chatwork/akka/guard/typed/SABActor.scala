@@ -131,8 +131,8 @@ object SABActor {
     private def commonWithOpen(attempt: Long): Behavior[Command] = {
       Behaviors
         .receiveMessagePartial(common(attempt) orElse open)
-        .receiveSignal {
-          case (_, PostStop) => postStop()
+        .receiveSignal { case (_, PostStop) =>
+          postStop()
         }
     }
 
@@ -199,8 +199,8 @@ object SABActor {
     private def commonWithClosed(attempt: Long, failureCount: Long): Behavior[Command] = {
       Behaviors
         .receiveMessagePartial(common(attempt) orElse closed(attempt, failureCount))
-        .receiveSignal {
-          case (_, PostStop) => postStop()
+        .receiveSignal { case (_, PostStop) =>
+          postStop()
         }
     }
 
