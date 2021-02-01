@@ -1,6 +1,6 @@
 val scala211Version = "2.11.12"
-val scala212Version = "2.12.11"
-val scala213Version = "2.13.2"
+val scala212Version = "2.12.13"
+val scala213Version = "2.13.4"
 
 val commonSettings = Seq(
   sonatypeProfileName := "com.chatwork",
