@@ -78,7 +78,7 @@ class SABReceiveTimeoutSpec
 
       sabBroker.ask[Try[String]](message1(_)).futureValue shouldBe successMessage
 
-      val probe1 = testKit.createTestProbe[Receptionist.Listing]
+      val probe1 = testKit.createTestProbe[Receptionist.Listing]()
       testKit.system.receptionist ! Receptionist.Subscribe(SABActor.SABActorServiceKey, probe1.ref)
       probe1.receiveMessage().allServiceInstances(SABActor.SABActorServiceKey).foreach { actorRef =>
         actorRef.ask[SABActor.SABStatus](reply => GetStatus(reply)).futureValue shouldBe SABStatus.Closed
@@ -87,13 +87,13 @@ class SABReceiveTimeoutSpec
       val message2 = createMessage("A" * 49)
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      val probe2 = testKit.createTestProbe[Receptionist.Listing]
+      val probe2 = testKit.createTestProbe[Receptionist.Listing]()
       testKit.system.receptionist ! Receptionist.Subscribe(SABActor.SABActorServiceKey, probe2.ref)
       probe2.receiveMessage().allServiceInstances(SABActor.SABActorServiceKey).foreach { actorRef =>
         actorRef.ask[SABActor.SABStatus](reply => GetStatus(reply)).futureValue shouldBe SABStatus.Open
       }
 
-      val probe3 = testKit.createTestProbe[Receptionist.Listing]
+      val probe3 = testKit.createTestProbe[Receptionist.Listing]()
       testKit.system.receptionist ! Receptionist.Subscribe(SABActor.SABActorServiceKey, probe3.ref)
       probe3.receiveMessage().allServiceInstances(SABActor.SABActorServiceKey).foreach { actorRef =>
         actorRef

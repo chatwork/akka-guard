@@ -116,7 +116,7 @@ class ServiceAttackBlockerDirectivesSpec
     val myBlocker: String => Directive0 = serviceAttackBlocker(blocker)
 
     def invokeMessageRef(messageRef: ActorRef[SABActor.Command] => Unit): Unit = {
-      val probe = testKit.createTestProbe[Receptionist.Listing]
+      val probe = testKit.createTestProbe[Receptionist.Listing]()
       testKit.system.receptionist ! Receptionist.Subscribe(SABActor.SABActorServiceKey, probe.ref)
       probe.receiveMessage().allServiceInstances(SABActor.SABActorServiceKey).foreach(messageRef)
     }

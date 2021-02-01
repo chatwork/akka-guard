@@ -60,7 +60,7 @@ class SABExponentialSpec
         case request if request.length < BoundaryLength  => Future.failed(new Exception(errorMessage))
         case request if request.length >= BoundaryLength => Future.successful(successMessage)
       }
-      val testProbe = testKit.createTestProbe[SABActor.Command]
+      val testProbe = testKit.createTestProbe[SABActor.Command]()
 
       val sabBrokerBehavior = SABBroker(
         SABSupervisor(config) { (message: SABMessage[T, R]) =>
@@ -94,7 +94,7 @@ class SABExponentialSpec
         reply => SABBrokerMessage(SABMessage(messageId, value, handler, reply))
 
       def invokeMessageRef(messageRef: ActorRef[SABActor.Command] => Unit): Unit = {
-        val probe = testKit.createTestProbe[Receptionist.Listing]
+        val probe = testKit.createTestProbe[Receptionist.Listing]()
         testKit.system.receptionist ! Receptionist.Subscribe(SABActor.SABActorServiceKey, probe.ref)
         probe.receiveMessage().allServiceInstances(SABActor.SABActorServiceKey).foreach(messageRef)
       }

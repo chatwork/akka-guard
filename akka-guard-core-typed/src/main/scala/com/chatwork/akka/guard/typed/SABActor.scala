@@ -189,9 +189,9 @@ object SABActor {
             case NonFatal(cause) => Future.failed(cause)
           }
         future.onComplete {
-          case Failure(_)                 => context.self ! Failed(failureCount)
-          case Success(r) if isFailed(r)  => context.self ! Failed(failureCount)
-          case Success(r) if !isFailed(r) => context.self ! BecameClosed(attempt, 0, setTimer = false)
+          case Failure(_)                => context.self ! Failed(failureCount)
+          case Success(r) if isFailed(r) => context.self ! Failed(failureCount)
+          case Success(r)                => context.self ! BecameClosed(attempt, 0, setTimer = false)
         }(context.executionContext)
         reply(future, msg.replyTo)
     }
