@@ -81,7 +81,7 @@ class SABBrokerSpec
       }
 
       And("Status Closed")
-      val probe1 = testKit.createTestProbe[Receptionist.Listing]
+      val probe1 = testKit.createTestProbe[Receptionist.Listing]()
       testKit.system.receptionist ! Receptionist.Subscribe(SABActor.SABActorServiceKey, probe1.ref)
       probe1.receiveMessage().allServiceInstances(SABActor.SABActorServiceKey).foreach { actorRef =>
         actorRef.ask[SABActor.SABStatus](reply => GetStatus(reply)).futureValue shouldBe SABStatus.Closed
@@ -100,7 +100,7 @@ class SABBrokerSpec
       }
 
       And("Status Open")
-      val probe2 = testKit.createTestProbe[Receptionist.Listing]
+      val probe2 = testKit.createTestProbe[Receptionist.Listing]()
       testKit.system.receptionist ! Receptionist.Subscribe(SABActor.SABActorServiceKey, probe2.ref)
       probe2.receiveMessage().allServiceInstances(SABActor.SABActorServiceKey).foreach { actorRef =>
         actorRef.ask[SABActor.SABStatus](reply => GetStatus(reply)).futureValue shouldBe SABStatus.Open
