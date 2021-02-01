@@ -34,8 +34,7 @@ jobs:
       - run: cat /dev/null | sbt +test:compile
 
       - save_cache:
-          paths:
-            - ~/.m2
+          paths: [ "~/.m2", "~/.ivy2", "~/.cache/coursier" ]
           key: v1-dependencies-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}
 
       # run tests!
