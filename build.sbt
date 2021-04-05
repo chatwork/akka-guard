@@ -31,10 +31,10 @@ val commonSettings = Seq(
       ScalaLangModules.java8Compat
     ),
   updateOptions := updateOptions.value.withCachedResolution(true),
-  parallelExecution in Test := false,
-  javaOptions in (Test, run) ++= Seq("-Xms4g", "-Xmx4g", "-Xss10M", "-XX:+CMSClassUnloadingEnabled"),
+  Test / parallelExecution := false,
+  Test / run / javaOptions ++= Seq("-Xms4g", "-Xmx4g", "-Xss10M", "-XX:+CMSClassUnloadingEnabled"),
   publishMavenStyle := true,
-  publishArtifact in Test := false,
+  Test / publishArtifact := false,
   pomIncludeRepository := { _ =>
     false
   },
@@ -58,7 +58,7 @@ val commonSettings = Seq(
       </developer>
     </developers>
   },
-  publishTo in ThisBuild := sonatypePublishTo.value,
+  ThisBuild / publishTo := sonatypePublishTo.value,
   credentials := {
     val ivyCredentials = (baseDirectory in LocalRootProject).value / ".credentials"
     Credentials(ivyCredentials) :: Nil
