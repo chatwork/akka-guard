@@ -61,7 +61,8 @@ val commonSettings = Seq(
   ThisBuild / publishTo := sonatypePublishTo.value,
   credentials := {
     val ivyCredentials = (baseDirectory in LocalRootProject).value / ".credentials"
-    Credentials(ivyCredentials) :: Nil
+    val gpgCredentials = (baseDirectory in LocalRootProject).value / ".gpgCredentials"
+    Credentials(ivyCredentials) :: Credentials(gpgCredentials) :: Nil
   }
 )
 
