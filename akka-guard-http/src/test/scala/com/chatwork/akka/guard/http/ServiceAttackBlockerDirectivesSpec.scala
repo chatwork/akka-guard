@@ -6,7 +6,6 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.pattern.ask
-import akka.testkit.TestKit
 import akka.util.Timeout
 import com.chatwork.akka.guard._
 import org.scalatest.concurrent.{ Eventually, ScalaFutures }

@@ -6,7 +6,7 @@ import akka.testkit.TestKit
 import akka.util.Timeout
 import org.scalacheck.Gen
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.concurrent.{ Eventually, ScalaFutures }
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpecLike
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{ Millis, Seconds, Span }
