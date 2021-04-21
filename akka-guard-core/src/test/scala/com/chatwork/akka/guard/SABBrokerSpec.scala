@@ -43,7 +43,7 @@ class SABBrokerSpec
       interval = scaled(Span(5 * testTimeFactor, Millis))
     )
 
-  Feature("SABBrokerSpec") {
+  Feature("SABBrokerSpec untyped") {
 
     Scenario("Success in LinealBackoff") {
 

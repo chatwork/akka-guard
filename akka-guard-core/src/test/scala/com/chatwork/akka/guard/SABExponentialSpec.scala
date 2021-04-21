@@ -40,7 +40,7 @@ class SABExponentialSpec
       interval = scaled(Span(2 * testTimeFactor, Millis))
     )
 
-  "SABExponential" - {
+  "SABExponential untyped" - {
     "auto reset" in {
       implicit val timeout: AkkaTimeout = AkkaTimeout((5 * testTimeFactor).seconds)
       val sabBrokerName1: String        = "broker-1"

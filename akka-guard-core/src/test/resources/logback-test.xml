@@ -23,7 +23,7 @@
         <appender-ref ref="akka-async" />
     </logger>
 
-    <root level="DEBUG">
+    <root level="INFO">
         <appender-ref ref="akka-async"/>
     </root>
 

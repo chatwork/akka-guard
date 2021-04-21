@@ -43,7 +43,7 @@ class SABReceiveTimeoutSpec
       interval = scaled(Span(5 * testTimeFactor, Millis))
     )
 
-  "SABReceiveTimeout" - {
+  "SABReceiveTimeout untyped" - {
     "receive timeout" in {
       implicit val timeout: AkkaTimeout = AkkaTimeout((5 * testTimeFactor).seconds)
       val sabBrokerName1: String        = "broker-1"

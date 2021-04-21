@@ -30,7 +30,7 @@ class ServiceAttackBlockerDirectivesSpec
   val clientId                      = "id-1"
   val uri: String => String         = prefix => s"/$prefix/$clientId"
 
-  "ServiceAttackBlockerDirectivesSpec" - {
+  "ServiceAttackBlockerDirectivesSpec untyped" - {
     "Success" in new WithFixture {
 
       (1 to 10).foreach { _ =>
