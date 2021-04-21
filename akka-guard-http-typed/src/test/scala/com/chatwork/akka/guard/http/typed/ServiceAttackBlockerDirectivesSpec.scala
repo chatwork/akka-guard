@@ -7,12 +7,13 @@ import akka.http.scaladsl.model.{ HttpResponse, StatusCodes }
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import akka.util.Timeout
+import akka.util.{ Timeout => AkkaTimeout }
 import com.chatwork.akka.guard.typed.SABActor
 import com.chatwork.akka.guard.typed.SABActor.SABStatus
 import com.chatwork.akka.guard.typed.config.{ LinealBackoff, SABConfig }
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
+import org.scalatest.concurrent.{ Eventually, ScalaFutures }
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{ Millis, Seconds, Span }
@@ -25,7 +26,8 @@ class ServiceAttackBlockerDirectivesSpec
     with BeforeAndAfterAll
     with Matchers
     with ScalatestRouteTest
-    with ScalaFutures {
+    with ScalaFutures
+    with Eventually {
 
   val testTimeFactor: Int = sys.env.getOrElse("TEST_TIME_FACTOR", "1").toInt
 
@@ -41,9 +43,9 @@ class ServiceAttackBlockerDirectivesSpec
     testKit.shutdownTestKit()
   }
 
-  implicit val timeout: Timeout = Timeout(4.seconds)
-  val clientId                  = "id-1"
-  val uri: String => String     = prefix => s"/$prefix/$clientId"
+  implicit val timeout: AkkaTimeout = AkkaTimeout(4.seconds)
+  val clientId                      = "id-1"
+  val uri: String => String         = prefix => s"/$prefix/$clientId"
 
   "ServiceAttackBlockerDirectivesSpec typed" - {
     "Success" in new WithFixture {
@@ -54,23 +56,19 @@ class ServiceAttackBlockerDirectivesSpec
         }
       }
 
-      val testProbe: TestProbe[Nothing] = testKit.createTestProbe()
       import akka.actor.typed.scaladsl.AskPattern._
 
-      testProbe.awaitAssert(
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert(messageRef.?(SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Closed)
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
-      testProbe.awaitAssert(
+        }
+      }
+
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert(messageRef.?(SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Closed)
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+        }
+      }
 
       (1 to 10).foreach { _ =>
         Get(uri(bad)) ~> routes ~> check {
@@ -78,13 +76,11 @@ class ServiceAttackBlockerDirectivesSpec
         }
       }
 
-      testProbe.awaitAssert(
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert(messageRef.?(SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Open)
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+        }
+      }
 
       (1 to 10).foreach { _ =>
         Get(uri(bad)) ~> routes ~> check {
