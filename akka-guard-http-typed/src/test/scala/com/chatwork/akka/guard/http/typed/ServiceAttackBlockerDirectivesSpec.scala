@@ -58,13 +58,13 @@ class ServiceAttackBlockerDirectivesSpec
 
       import akka.actor.typed.scaladsl.AskPattern._
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         invokeMessageRef { messageRef =>
           assert(messageRef.?(SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Closed)
         }
       }
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         invokeMessageRef { messageRef =>
           assert(messageRef.?(SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Closed)
         }
@@ -76,7 +76,7 @@ class ServiceAttackBlockerDirectivesSpec
         }
       }
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         invokeMessageRef { messageRef =>
           assert(messageRef.?(SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Open)
         }
@@ -120,7 +120,7 @@ class ServiceAttackBlockerDirectivesSpec
       val probe = testKit.createTestProbe[Receptionist.Listing]()
       testKit.system.receptionist ! Receptionist.Subscribe(SABActor.SABActorServiceKey, probe.ref)
       probe
-        .receiveMessage((5 * testTimeFactor).seconds).allServiceInstances(SABActor.SABActorServiceKey).foreach(
+        .receiveMessage((15 * testTimeFactor).seconds).allServiceInstances(SABActor.SABActorServiceKey).foreach(
           messageRef
         )
     }

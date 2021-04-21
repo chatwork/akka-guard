@@ -12,7 +12,6 @@ import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.{ Eventually, ScalaFutures }
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.time.Span
 
 import scala.concurrent.duration._
 import scala.util.{ Success, Try }
@@ -39,7 +38,7 @@ class ServiceAttackBlockerDirectivesSpec
         }
       }
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         messageRef
           .?(SABActor.GetStatus)
           .mapTo[SABStatus]
@@ -52,7 +51,7 @@ class ServiceAttackBlockerDirectivesSpec
         }
       }
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         messageRef
           .?(SABActor.GetStatus)
           .mapTo[SABStatus]

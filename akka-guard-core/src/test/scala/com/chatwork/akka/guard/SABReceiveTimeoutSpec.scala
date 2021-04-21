@@ -73,7 +73,7 @@ class SABReceiveTimeoutSpec
 
       (sabBroker ? message1).mapTo[String].futureValue shouldBe successMessage
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         (messageRef ? SABActor.GetStatus)
           .mapTo[SABStatus].futureValue shouldBe SABStatus.Closed
       }
@@ -81,7 +81,7 @@ class SABReceiveTimeoutSpec
       val message2 = SABMessage(messageId, "A" * 49, handler)
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         (messageRef ? SABActor.GetStatus)
           .mapTo[SABStatus].futureValue shouldBe SABStatus.Open
       }

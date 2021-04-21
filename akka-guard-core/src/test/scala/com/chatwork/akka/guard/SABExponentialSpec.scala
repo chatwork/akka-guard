@@ -105,7 +105,7 @@ class SABExponentialSpec
       val message1 = SABMessage(messageId, "A" * 50, handler)
       (sabBroker ? message1).mapTo[String].futureValue shouldBe successMessage
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed
       }
 
@@ -115,65 +115,65 @@ class SABExponentialSpec
       val message2 = SABMessage(messageId, "A" * 49, handler)
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open
       }
 
-      testProbe.expectMsg((30 * testTimeFactor).seconds, BecameClosed(1, 0, setTimer = true))
+      testProbe.expectMsg((15 * testTimeFactor).seconds, BecameClosed(1, 0, setTimer = true))
       messageRef ! BecameClosed(1, 0, setTimer = true)
 
       (messageRef ? SABActor.GetAttemptRequest(messageId))
         .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 1
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed
       }
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open
       }
 
-      testProbe.expectMsg((30 * testTimeFactor).seconds, BecameClosed(2, 0, setTimer = true))
+      testProbe.expectMsg((15 * testTimeFactor).seconds, BecameClosed(2, 0, setTimer = true))
       messageRef ! BecameClosed(2, 0, setTimer = true)
 
       (messageRef ? SABActor.GetAttemptRequest(messageId))
         .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 2
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed
       }
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open
       }
 
       (messageRef ? SABActor.GetAttemptRequest(messageId))
         .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 3
 
-      testProbe.expectMsg((30 * testTimeFactor).seconds, BecameClosed(0, 0, setTimer = true))
+      testProbe.expectMsg((15 * testTimeFactor).seconds, BecameClosed(0, 0, setTimer = true))
       messageRef ! BecameClosed(0, 0, setTimer = true)
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed
       }
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open
       }
 
       (messageRef ? SABActor.GetAttemptRequest(messageId))
         .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 1
 
-      testProbe.expectMsg((30 * testTimeFactor).seconds, BecameClosed(1, 0, setTimer = true))
+      testProbe.expectMsg((15 * testTimeFactor).seconds, BecameClosed(1, 0, setTimer = true))
       messageRef ! BecameClosed(1, 0, setTimer = true)
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).second)) {
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed
       }
 

@@ -108,7 +108,7 @@ class SABExponentialSpec
         val probe = testKit.createTestProbe[Receptionist.Listing]()
         testKit.system.receptionist ! Receptionist.Subscribe(SABActor.SABActorServiceKey, probe.ref)
         probe
-          .receiveMessage((5 * testTimeFactor).seconds).allServiceInstances(SABActor.SABActorServiceKey).foreach(
+          .receiveMessage((15 * testTimeFactor).seconds).allServiceInstances(SABActor.SABActorServiceKey).foreach(
             messageRef
           )
       }
@@ -117,13 +117,13 @@ class SABExponentialSpec
       val message1 = createMessage("A" * 50)
       (sabBroker ? message1).mapTo[String].futureValue shouldBe successMessage
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Closed)
         }
       }
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         invokeMessageRef { messageRef =>
           assert(
             messageRef
@@ -135,7 +135,7 @@ class SABExponentialSpec
       val message2 = createMessage("A" * 49)
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Open)
         }
@@ -153,7 +153,7 @@ class SABExponentialSpec
         )
       }
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Closed)
         }
@@ -161,7 +161,7 @@ class SABExponentialSpec
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Open)
         }
@@ -179,7 +179,7 @@ class SABExponentialSpec
         )
       }
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Closed)
         }
@@ -187,7 +187,7 @@ class SABExponentialSpec
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Open)
         }
@@ -205,7 +205,7 @@ class SABExponentialSpec
         messageRef ! BecameClosed(0, 0, setTimer = true)
       }
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Closed)
         }
@@ -213,7 +213,7 @@ class SABExponentialSpec
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      eventually(Timeout(Span.Max)) {
+      eventually(Timeout((15 * testTimeFactor).seconds)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Open)
         }
