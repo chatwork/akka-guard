@@ -38,12 +38,10 @@ class ServiceAttackBlockerDirectivesSpec
         }
       }
 
-      eventually(Timeout((120 * testTimeFactor).seconds)) {
-        messageRef
-          .?(SABActor.GetStatus)
-          .mapTo[SABStatus]
-          .futureValue == SABStatus.Closed
-      }
+      messageRef
+        .?(SABActor.GetStatus)
+        .mapTo[SABStatus]
+        .futureValue == SABStatus.Closed
 
       (1 to 10).foreach { _ =>
         Get(uri(bad)) ~> routes ~> check {
@@ -51,12 +49,10 @@ class ServiceAttackBlockerDirectivesSpec
         }
       }
 
-      eventually(Timeout((120 * testTimeFactor).seconds)) {
-        messageRef
-          .?(SABActor.GetStatus)
-          .mapTo[SABStatus]
-          .futureValue == SABStatus.Open
-      }
+      messageRef
+        .?(SABActor.GetStatus)
+        .mapTo[SABStatus]
+        .futureValue == SABStatus.Open
 
       (1 to 10).foreach { _ =>
         Get(uri(bad)) ~> routes ~> check {
