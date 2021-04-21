@@ -36,7 +36,7 @@ class SABExponentialSpec
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(
-      timeout = scaled(Span(10 * testTimeFactor, Seconds)),
+      timeout = scaled(Span(30 * testTimeFactor, Seconds)),
       interval = scaled(Span(2 * testTimeFactor, Millis))
     )
 
