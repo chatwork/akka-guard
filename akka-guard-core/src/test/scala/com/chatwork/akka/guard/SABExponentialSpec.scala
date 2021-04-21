@@ -170,7 +170,7 @@ class SABExponentialSpec
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      eventually(Timeout((30 * testTimeFactor).seconds)) {
+      eventually(Timeout((120 * testTimeFactor).seconds)) {
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open
       }
 
