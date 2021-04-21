@@ -4,12 +4,13 @@ import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import akka.actor.typed.ActorRef
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
-import akka.util.Timeout
+import akka.util.{ Timeout => AkkaTimeout }
 import com.chatwork.akka.guard.typed.SABActor.{ BecameClosed, SABMessage, SABStatus }
 import com.chatwork.akka.guard.typed.SABBroker.SABBrokerMessage
 import com.chatwork.akka.guard.typed.config.{ ExponentialBackoff, LinealBackoff, SABConfig }
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
+import org.scalatest.concurrent.{ Eventually, ScalaFutures }
 import org.scalatest.freespec.AnyFreeSpecLike
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{ Millis, Seconds, Span }
@@ -24,7 +25,8 @@ class SABExponentialSpec
     with BeforeAndAfterAll
     with ScalaCheckPropertyChecks
     with Matchers
-    with ScalaFutures {
+    with ScalaFutures
+    with Eventually {
 
   val testKit: ActorTestKit = ActorTestKit()
 
@@ -53,9 +55,9 @@ class SABExponentialSpec
   "SABExponential typed" - {
     "auto reset" in {
       import testKit.system
-      implicit val timeout: Timeout = Timeout((5 * testTimeFactor).seconds)
-      val sabBrokerName1: String    = "broker-1"
-      val messageId: String         = "id-1"
+      implicit val timeout: AkkaTimeout = AkkaTimeout((5 * testTimeFactor).seconds)
+      val sabBrokerName1: String        = "broker-1"
+      val messageId: String             = "id-1"
       val config: SABConfig = SABConfig(
         maxFailures = 9,
         failureDuration = 10.seconds,
@@ -112,93 +114,77 @@ class SABExponentialSpec
       val message1 = createMessage("A" * 50)
       (sabBroker ? message1).mapTo[String].futureValue shouldBe successMessage
 
-      testProbe.awaitAssert(
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Closed)
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+        }
+      }
 
-      testProbe.awaitAssert(
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert(
             messageRef
               .ask[SABActor.GetAttemptResponse](SABActor.GetAttemptRequest(messageId, _)).futureValue.attempt === 0
           )
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+        }
+      }
 
       val message2 = createMessage("A" * 49)
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      testProbe.awaitAssert(
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Open)
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+        }
+      }
 
       testProbe.expectMessage(BecameClosed(1, 0, setTimer = true))
       invokeMessageRef { messageRef =>
         messageRef ! BecameClosed(1, 0, setTimer = true)
       }
 
-      testProbe.awaitAssert(
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert(
             messageRef
               .ask[SABActor.GetAttemptResponse](SABActor.GetAttemptRequest(messageId, _)).futureValue.attempt === 1
           )
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+        }
+      }
 
-      testProbe.awaitAssert(
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Closed)
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+        }
+      }
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      testProbe.awaitAssert(
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Open)
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+        }
+      }
 
       testProbe.expectMessage(BecameClosed(2, 0, setTimer = true))
       invokeMessageRef { messageRef =>
         messageRef ! BecameClosed(2, 0, setTimer = true)
       }
 
-      testProbe.awaitAssert(
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert(
             messageRef
               .ask[SABActor.GetAttemptResponse](SABActor.GetAttemptRequest(messageId, _)).futureValue.attempt === 2
           )
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+        }
+      }
 
-      testProbe.awaitAssert(
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Closed)
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+        }
+      }
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
@@ -210,16 +196,14 @@ class SABExponentialSpec
         (1 * testTimeFactor).second
       )
 
-      testProbe.awaitAssert(
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert(
             messageRef
               .ask[SABActor.GetAttemptResponse](SABActor.GetAttemptRequest(messageId, _)).futureValue.attempt === 3
           )
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+        }
+      }
 
       testProbe.expectMessage(BecameClosed(0, 0, setTimer = true))
       invokeMessageRef { messageRef =>
@@ -236,38 +220,31 @@ class SABExponentialSpec
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      testProbe.awaitAssert(
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Open)
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+        }
+      }
 
-      testProbe.awaitAssert(
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert(
             messageRef
               .ask[SABActor.GetAttemptResponse](SABActor.GetAttemptRequest(messageId, _)).futureValue.attempt === 1
           )
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+        }
+      }
 
       testProbe.expectMessage(BecameClosed(1, 0, setTimer = true))
       invokeMessageRef { messageRef =>
         messageRef ! BecameClosed(1, 0, setTimer = true)
       }
 
-      testProbe.awaitAssert(
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Closed)
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
-
+        }
+      }
     }
   }
 }
