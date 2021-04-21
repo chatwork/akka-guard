@@ -3,9 +3,10 @@ package com.chatwork.akka.guard
 import akka.actor.{ ActorPath, ActorRef, ActorSelection, ActorSystem, Cancellable, Props }
 import akka.pattern.ask
 import akka.testkit.{ TestKit, TestProbe }
-import akka.util.Timeout
+import akka.util.{ Timeout => AkkaTimeout }
 import com.chatwork.akka.guard.SABActor.BecameClosed
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.{ Eventually, ScalaFutures }
 import org.scalatest.freespec.AnyFreeSpecLike
 import org.scalatest.matchers.should.Matchers
@@ -41,9 +42,9 @@ class SABExponentialSpec
 
   "SABExponential" - {
     "auto reset" in {
-      implicit val timeout: Timeout = Timeout((5 * testTimeFactor).seconds)
-      val sabBrokerName1: String    = "broker-1"
-      val messageId: String         = "id-1"
+      implicit val timeout: AkkaTimeout = AkkaTimeout((5 * testTimeFactor).seconds)
+      val sabBrokerName1: String        = "broker-1"
+      val messageId: String             = "id-1"
       val config: SABConfig = SABConfig(
         maxFailures = 9,
         failureDuration = (10 * testTimeFactor).seconds,
@@ -169,7 +170,7 @@ class SABExponentialSpec
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      eventually {
+      eventually(Timeout(Span.Max)) {
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open
       }
 
