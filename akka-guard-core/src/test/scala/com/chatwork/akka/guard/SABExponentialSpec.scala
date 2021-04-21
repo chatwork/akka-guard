@@ -6,7 +6,6 @@ import akka.testkit.{ TestKit, TestProbe }
 import akka.util.{ Timeout => AkkaTimeout }
 import com.chatwork.akka.guard.SABActor.BecameClosed
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.{ Eventually, ScalaFutures }
 import org.scalatest.freespec.AnyFreeSpecLike
 import org.scalatest.matchers.should.Matchers
