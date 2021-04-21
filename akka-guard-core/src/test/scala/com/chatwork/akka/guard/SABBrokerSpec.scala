@@ -39,7 +39,7 @@ class SABBrokerSpec
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(
-      timeout = scaled(Span(2 * testTimeFactor, Seconds)),
+      timeout = scaled(Span(30 * testTimeFactor, Seconds)),
       interval = scaled(Span(5 * testTimeFactor, Millis))
     )
 
@@ -48,7 +48,7 @@ class SABBrokerSpec
     Scenario("Success in LinealBackoff") {
 
       Given("broker pattern 1")
-      implicit val timeout: Timeout = Timeout(5.seconds)
+      implicit val timeout: Timeout = Timeout((5 * testTimeFactor).seconds)
       val sabBrokerName1: String    = "broker-1"
       val messageId: String         = "id-1"
       val config: SABConfig = SABConfig(
@@ -103,8 +103,8 @@ class SABBrokerSpec
       val messageId: String         = "id-2"
       val config: SABConfig = SABConfig(
         maxFailures = 9,
-        failureDuration = 500.milliseconds,
-        backoff = LinealBackoff(1.hour)
+        failureDuration = (500 * testTimeFactor).milliseconds,
+        backoff = LinealBackoff((1 * testTimeFactor).hour)
       )
       val handler: String => Future[String] = _ =>
         Future {
