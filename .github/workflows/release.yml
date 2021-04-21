@@ -9,7 +9,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest ]
-        jdk: [ adopt@1.8, adopt@1.11, adopt@1.14 ]
+        jdk: [ adopt@1.8 ]
         scala: [ 2.11.12, 2.12.13, 2.13.5 ]
     runs-on: ${{ matrix.os }}
     env:
