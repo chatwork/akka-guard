@@ -6,8 +6,9 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.pattern.ask
-import akka.util.Timeout
+import akka.util.{ Timeout => AkkaTimeout }
 import com.chatwork.akka.guard._
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.{ Eventually, ScalaFutures }
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
@@ -24,9 +25,9 @@ class ServiceAttackBlockerDirectivesSpec
 
   val testTimeFactor: Int = sys.env.getOrElse("TEST_TIME_FACTOR", "1").toInt
 
-  implicit val timeout: Timeout = Timeout((4 * testTimeFactor).seconds)
-  val clientId                  = "id-1"
-  val uri: String => String     = prefix => s"/$prefix/$clientId"
+  implicit val timeout: AkkaTimeout = AkkaTimeout((4 * testTimeFactor).seconds)
+  val clientId                      = "id-1"
+  val uri: String => String         = prefix => s"/$prefix/$clientId"
 
   "ServiceAttackBlockerDirectivesSpec" - {
     "Success" in new WithFixture {
@@ -37,7 +38,7 @@ class ServiceAttackBlockerDirectivesSpec
         }
       }
 
-      eventually {
+      eventually(Timeout((120 * testTimeFactor).seconds)) {
         messageRef
           .?(SABActor.GetStatus)
           .mapTo[SABStatus]
@@ -50,7 +51,7 @@ class ServiceAttackBlockerDirectivesSpec
         }
       }
 
-      eventually {
+      eventually(Timeout((120 * testTimeFactor).seconds)) {
         messageRef
           .?(SABActor.GetStatus)
           .mapTo[SABStatus]
@@ -84,7 +85,7 @@ class ServiceAttackBlockerDirectivesSpec
       SABConfig(
         maxFailures = 9,
         failureDuration = (10 * testTimeFactor).seconds,
-        backoff = LinealBackoff(1.hour)
+        backoff = LinealBackoff((1 * testTimeFactor).hour)
       )
 
     val blocker: ServiceAttackBlocker   = ServiceAttackBlocker(system, sabConfig)(failedResponse, isFailed)
