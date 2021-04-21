@@ -146,13 +146,11 @@ class SABExponentialSpec
         messageRef ! BecameClosed(1, 0, setTimer = true)
       }
 
-      eventually(Timeout(Span.Max)) {
-        invokeMessageRef { messageRef =>
-          assert(
-            messageRef
-              .ask[SABActor.GetAttemptResponse](SABActor.GetAttemptRequest(messageId, _)).futureValue.attempt === 1
-          )
-        }
+      invokeMessageRef { messageRef =>
+        assert(
+          messageRef
+            .ask[SABActor.GetAttemptResponse](SABActor.GetAttemptRequest(messageId, _)).futureValue.attempt === 1
+        )
       }
 
       eventually(Timeout(Span.Max)) {
@@ -174,13 +172,11 @@ class SABExponentialSpec
         messageRef ! BecameClosed(2, 0, setTimer = true)
       }
 
-      eventually(Timeout(Span.Max)) {
-        invokeMessageRef { messageRef =>
-          assert(
-            messageRef
-              .ask[SABActor.GetAttemptResponse](SABActor.GetAttemptRequest(messageId, _)).futureValue.attempt === 2
-          )
-        }
+      invokeMessageRef { messageRef =>
+        assert(
+          messageRef
+            .ask[SABActor.GetAttemptResponse](SABActor.GetAttemptRequest(messageId, _)).futureValue.attempt === 2
+        )
       }
 
       eventually(Timeout(Span.Max)) {
@@ -197,13 +193,11 @@ class SABExponentialSpec
         }
       }
 
-      eventually(Timeout(Span.Max)) {
-        invokeMessageRef { messageRef =>
-          assert(
-            messageRef
-              .ask[SABActor.GetAttemptResponse](SABActor.GetAttemptRequest(messageId, _)).futureValue.attempt === 3
-          )
-        }
+      invokeMessageRef { messageRef =>
+        assert(
+          messageRef
+            .ask[SABActor.GetAttemptResponse](SABActor.GetAttemptRequest(messageId, _)).futureValue.attempt === 3
+        )
       }
 
       testProbe.expectMessage(BecameClosed(0, 0, setTimer = true))
@@ -225,13 +219,11 @@ class SABExponentialSpec
         }
       }
 
-      eventually(Timeout(Span.Max)) {
-        invokeMessageRef { messageRef =>
-          assert(
-            messageRef
-              .ask[SABActor.GetAttemptResponse](SABActor.GetAttemptRequest(messageId, _)).futureValue.attempt === 1
-          )
-        }
+      invokeMessageRef { messageRef =>
+        assert(
+          messageRef
+            .ask[SABActor.GetAttemptResponse](SABActor.GetAttemptRequest(messageId, _)).futureValue.attempt === 1
+        )
       }
 
       testProbe.expectMessage(BecameClosed(1, 0, setTimer = true))
