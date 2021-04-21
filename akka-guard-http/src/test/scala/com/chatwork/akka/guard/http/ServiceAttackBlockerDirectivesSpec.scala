@@ -8,9 +8,11 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.pattern.ask
 import akka.util.{ Timeout => AkkaTimeout }
 import com.chatwork.akka.guard._
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.{ Eventually, ScalaFutures }
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.time.Span
 
 import scala.concurrent.duration._
 import scala.util.{ Success, Try }
@@ -37,10 +39,12 @@ class ServiceAttackBlockerDirectivesSpec
         }
       }
 
-      messageRef
-        .?(SABActor.GetStatus)
-        .mapTo[SABStatus]
-        .futureValue == SABStatus.Closed
+      eventually(Timeout(Span.Max)) {
+        messageRef
+          .?(SABActor.GetStatus)
+          .mapTo[SABStatus]
+          .futureValue == SABStatus.Closed
+      }
 
       (1 to 10).foreach { _ =>
         Get(uri(bad)) ~> routes ~> check {
@@ -48,10 +52,12 @@ class ServiceAttackBlockerDirectivesSpec
         }
       }
 
-      messageRef
-        .?(SABActor.GetStatus)
-        .mapTo[SABStatus]
-        .futureValue == SABStatus.Open
+      eventually(Timeout(Span.Max)) {
+        messageRef
+          .?(SABActor.GetStatus)
+          .mapTo[SABStatus]
+          .futureValue == SABStatus.Open
+      }
 
       (1 to 10).foreach { _ =>
         Get(uri(bad)) ~> routes ~> check {
