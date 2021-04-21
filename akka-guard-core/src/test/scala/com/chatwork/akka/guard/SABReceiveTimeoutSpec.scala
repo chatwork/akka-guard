@@ -37,8 +37,8 @@ class SABReceiveTimeoutSpec
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(
-      timeout = scaled(Span(5 * testTimeFactor, Seconds)),
-      interval = scaled(Span(15 * testTimeFactor, Millis))
+      timeout = scaled(Span(2 * testTimeFactor, Seconds)),
+      interval = scaled(Span(5 * testTimeFactor, Millis))
     )
 
   "SABReceiveTimeout" - {
@@ -85,9 +85,6 @@ class SABReceiveTimeoutSpec
 
     }
   }
-
-  override implicit def patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = Span(2, Seconds), interval = Span(5, Millis))
 
   override protected def afterAll(): Unit = {
     shutdown()
