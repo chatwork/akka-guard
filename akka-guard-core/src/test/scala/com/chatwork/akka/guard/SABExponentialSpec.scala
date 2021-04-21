@@ -137,7 +137,7 @@ class SABExponentialSpec
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open
       }
 
-      testProbe.expectMsg((3 * testTimeFactor).seconds`, BecameClosed(2, 0, setTimer = true))
+      testProbe.expectMsg((3 * testTimeFactor).seconds, BecameClosed(2, 0, setTimer = true))
       messageRef ! BecameClosed(2, 0, setTimer = true)
 
       eventually {
