@@ -9,14 +9,19 @@ import akka.pattern.ask
 import akka.testkit.TestKit
 import akka.util.Timeout
 import com.chatwork.akka.guard._
-import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.concurrent.{ Eventually, ScalaFutures }
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.duration._
 import scala.util.{ Success, Try }
 
-class ServiceAttackBlockerDirectivesSpec extends AnyFreeSpec with Matchers with ScalatestRouteTest with ScalaFutures {
+class ServiceAttackBlockerDirectivesSpec
+    extends AnyFreeSpec
+    with Matchers
+    with ScalatestRouteTest
+    with ScalaFutures
+    with Eventually {
 
   val testTimeFactor: Int = sys.env.getOrElse("TEST_TIME_FACTOR", "1").toInt
 
@@ -33,14 +38,12 @@ class ServiceAttackBlockerDirectivesSpec extends AnyFreeSpec with Matchers with 
         }
       }
 
-      TestKit.awaitCond(
+      eventually {
         messageRef
           .?(SABActor.GetStatus)
           .mapTo[SABStatus]
-          .futureValue == SABStatus.Closed,
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+          .futureValue == SABStatus.Closed
+      }
 
       (1 to 10).foreach { _ =>
         Get(uri(bad)) ~> routes ~> check {
@@ -48,14 +51,12 @@ class ServiceAttackBlockerDirectivesSpec extends AnyFreeSpec with Matchers with 
         }
       }
 
-      TestKit.awaitCond(
+      eventually {
         messageRef
           .?(SABActor.GetStatus)
           .mapTo[SABStatus]
-          .futureValue == SABStatus.Open,
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+          .futureValue == SABStatus.Open
+      }
 
       (1 to 10).foreach { _ =>
         Get(uri(bad)) ~> routes ~> check {

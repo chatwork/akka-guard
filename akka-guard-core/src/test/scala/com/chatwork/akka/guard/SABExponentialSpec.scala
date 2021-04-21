@@ -6,7 +6,7 @@ import akka.testkit.{ TestKit, TestProbe }
 import akka.util.Timeout
 import com.chatwork.akka.guard.SABActor.BecameClosed
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.concurrent.{ Eventually, ScalaFutures }
 import org.scalatest.freespec.AnyFreeSpecLike
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{ Millis, Seconds, Span }
@@ -22,7 +22,8 @@ class SABExponentialSpec
     with BeforeAndAfterAll
     with ScalaCheckPropertyChecks
     with Matchers
-    with ScalaFutures {
+    with ScalaFutures
+    with Eventually {
   val BoundaryLength              = 50
   val failedMessage               = "failed!!"
   val errorMessage                = "error!!"
@@ -103,115 +104,86 @@ class SABExponentialSpec
       val message1 = SABMessage(messageId, "A" * 50, handler)
       (sabBroker ? message1).mapTo[String].futureValue shouldBe successMessage
 
-      awaitCond(
-        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed,
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+      eventually {
+        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed
+      }
 
-      awaitCond(
+      eventually {
         (messageRef ? SABActor.GetAttemptRequest(messageId))
-          .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 0,
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
-
+          .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 0
+      }
       val message2 = SABMessage(messageId, "A" * 49, handler)
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      awaitCond(
-        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open,
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+      eventually {
+        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open
+      }
 
       testProbe.expectMsg(BecameClosed(1, 0, setTimer = true))
       messageRef ! BecameClosed(1, 0, setTimer = true)
 
-      awaitCond(
+      eventually {
         (messageRef ? SABActor.GetAttemptRequest(messageId))
-          .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 1,
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+          .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 1
+      }
 
-      awaitCond(
-        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed,
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+      eventually {
+        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed
+      }
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      awaitCond(
-        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open,
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+      eventually {
+        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open
+      }
 
       testProbe.expectMsg(BecameClosed(2, 0, setTimer = true))
       messageRef ! BecameClosed(2, 0, setTimer = true)
 
-      awaitCond(
+      eventually {
         (messageRef ? SABActor.GetAttemptRequest(messageId))
-          .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 2,
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+          .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 2
+      }
 
-      awaitCond(
-        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed,
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+      eventually {
+        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed
+      }
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      awaitCond(
-        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open,
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+      eventually {
+        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open
+      }
 
-      awaitCond(
+      eventually {
         (messageRef ? SABActor.GetAttemptRequest(messageId))
-          .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 3,
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+          .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 3
+      }
 
-      testProbe.expectMsg(BecameClosed(0, 0, setTimer = true))
+      testProbe.expectMsg((3 * testTimeFactor).seconds, BecameClosed(0, 0, setTimer = true))
       messageRef ! BecameClosed(0, 0, setTimer = true)
 
-      awaitCond(
-        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed,
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+      eventually {
+        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed
+      }
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      awaitCond(
-        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open,
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+      eventually {
+        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open
+      }
 
-      awaitCond(
+      eventually {
         (messageRef ? SABActor.GetAttemptRequest(messageId))
-          .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 1,
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+          .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 1
+      }
 
-      testProbe.expectMsg(BecameClosed(1, 0, setTimer = true))
+      testProbe.expectMsg((3 * testTimeFactor).seconds, BecameClosed(1, 0, setTimer = true))
       messageRef ! BecameClosed(1, 0, setTimer = true)
 
-      awaitCond(
-        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed,
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+      eventually {
+        (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed
+      }
 
     }
   }
