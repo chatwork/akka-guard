@@ -1,6 +1,6 @@
 package com.chatwork.akka.guard.http.typed
 
-import akka.actor.testkit.typed.scaladsl.{ ActorTestKit, TestProbe }
+import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.{ ActorRef, Scheduler }
 import akka.http.scaladsl.model.{ HttpResponse, StatusCodes }
