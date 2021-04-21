@@ -119,7 +119,7 @@ class SABExponentialSpec
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open
       }
 
-      testProbe.expectMsg((3 * testTimeFactor).seconds, BecameClosed(1, 0, setTimer = true))
+      testProbe.expectMsg((30 * testTimeFactor).seconds, BecameClosed(1, 0, setTimer = true))
       messageRef ! BecameClosed(1, 0, setTimer = true)
 
       (messageRef ? SABActor.GetAttemptRequest(messageId))
@@ -135,7 +135,7 @@ class SABExponentialSpec
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open
       }
 
-      testProbe.expectMsg((3 * testTimeFactor).seconds, BecameClosed(2, 0, setTimer = true))
+      testProbe.expectMsg((30 * testTimeFactor).seconds, BecameClosed(2, 0, setTimer = true))
       messageRef ! BecameClosed(2, 0, setTimer = true)
 
       (messageRef ? SABActor.GetAttemptRequest(messageId))
@@ -154,7 +154,7 @@ class SABExponentialSpec
       (messageRef ? SABActor.GetAttemptRequest(messageId))
         .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 3
 
-      testProbe.expectMsg((3 * testTimeFactor).seconds, BecameClosed(0, 0, setTimer = true))
+      testProbe.expectMsg((30 * testTimeFactor).seconds, BecameClosed(0, 0, setTimer = true))
       messageRef ! BecameClosed(0, 0, setTimer = true)
 
       eventually(Timeout(Span.Max)) {
@@ -170,7 +170,7 @@ class SABExponentialSpec
       (messageRef ? SABActor.GetAttemptRequest(messageId))
         .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 1
 
-      testProbe.expectMsg((3 * testTimeFactor).seconds, BecameClosed(1, 0, setTimer = true))
+      testProbe.expectMsg((30 * testTimeFactor).seconds, BecameClosed(1, 0, setTimer = true))
       messageRef ! BecameClosed(1, 0, setTimer = true)
 
       eventually(Timeout(Span.Max)) {
