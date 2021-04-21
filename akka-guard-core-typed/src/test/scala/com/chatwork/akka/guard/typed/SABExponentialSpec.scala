@@ -107,7 +107,10 @@ class SABExponentialSpec
       def invokeMessageRef(messageRef: ActorRef[SABActor.Command] => Unit): Unit = {
         val probe = testKit.createTestProbe[Receptionist.Listing]()
         testKit.system.receptionist ! Receptionist.Subscribe(SABActor.SABActorServiceKey, probe.ref)
-        probe.receiveMessage().allServiceInstances(SABActor.SABActorServiceKey).foreach(messageRef)
+        probe
+          .receiveMessage((5 * testTimeFactor).seconds).allServiceInstances(SABActor.SABActorServiceKey).foreach(
+            messageRef
+          )
       }
 
       import akka.actor.typed.scaladsl.AskPattern._
@@ -188,13 +191,11 @@ class SABExponentialSpec
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
-      testProbe.awaitAssert(
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Open)
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+        }
+      }
 
       eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
