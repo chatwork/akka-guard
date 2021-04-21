@@ -46,7 +46,7 @@ class SABExponentialSpec
       val messageId: String         = "id-1"
       val config: SABConfig = SABConfig(
         maxFailures = 9,
-        failureDuration = 10.seconds,
+        failureDuration = (10 * testTimeFactor).seconds,
         backoff = ExponentialBackoff(
           minBackoff = (2 * testTimeFactor).seconds,
           maxBackoff = (10 * testTimeFactor).seconds,
@@ -119,7 +119,7 @@ class SABExponentialSpec
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open
       }
 
-      testProbe.expectMsg(BecameClosed(1, 0, setTimer = true))
+      testProbe.expectMsg((3 * testTimeFactor).seconds, BecameClosed(1, 0, setTimer = true))
       messageRef ! BecameClosed(1, 0, setTimer = true)
 
       eventually {
@@ -137,7 +137,7 @@ class SABExponentialSpec
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open
       }
 
-      testProbe.expectMsg(BecameClosed(2, 0, setTimer = true))
+      testProbe.expectMsg((3 * testTimeFactor).seconds`, BecameClosed(2, 0, setTimer = true))
       messageRef ! BecameClosed(2, 0, setTimer = true)
 
       eventually {
