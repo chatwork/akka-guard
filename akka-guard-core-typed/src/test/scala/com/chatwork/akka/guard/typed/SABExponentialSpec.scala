@@ -211,13 +211,11 @@ class SABExponentialSpec
         messageRef ! BecameClosed(0, 0, setTimer = true)
       }
 
-      testProbe.awaitAssert(
+      eventually(Timeout(Span.Max)) {
         invokeMessageRef { messageRef =>
           assert((messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Closed)
-        },
-        (5 * testTimeFactor).seconds,
-        (1 * testTimeFactor).second
-      )
+        }
+      }
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
