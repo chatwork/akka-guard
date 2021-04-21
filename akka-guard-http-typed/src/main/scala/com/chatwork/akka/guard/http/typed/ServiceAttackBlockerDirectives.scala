@@ -1,7 +1,7 @@
 package com.chatwork.akka.guard.http.typed
 
 import akka.actor.typed.scaladsl.AskPattern._
-import akka.actor.typed.{ ActorRef, ActorSystem, Scheduler }
+import akka.actor.typed.{ ActorRef, Scheduler }
 import akka.http.scaladsl.server.{ Directive, Directive0 }
 import akka.util.Timeout
 import com.chatwork.akka.guard.typed.SABActor.SABMessage

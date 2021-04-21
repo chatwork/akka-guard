@@ -1,6 +1,12 @@
 import sbt._
 import sbt.ModuleID
 
+object ScalaVersions {
+  val scala211Version = "2.11.12"
+  val scala212Version = "2.12.13"
+  val scala213Version = "2.13.4"
+}
+
 object ScalaLangModules {
   val java8Compat      = "org.scala-lang.modules" %% "scala-java8-compat"      % "0.9.1"
   val collectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.3"
@@ -40,7 +46,7 @@ object Cats {
   }
 
   object Version2_1 {
-    val core = "org.typelevel" %% "cats-core" % "2.4.2"
+    val core = "org.typelevel" %% "cats-core" % "2.6.0"
   }
 }
 
