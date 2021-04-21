@@ -1,77 +1,81 @@
-val scala211Version = "2.11.12"
-val scala212Version = "2.12.13"
-val scala213Version = "2.13.4"
+import sbt._
+
+ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value)
+
+def crossScalacOptions(scalaVersion: String): Seq[String] = CrossVersion.partialVersion(scalaVersion) match {
+  case Some((2L, scalaMajor)) if scalaMajor >= 12 =>
+    Seq.empty
+  case Some((2L, scalaMajor)) if scalaMajor <= 11 =>
+    Seq("-Yinline-warnings")
+}
 
 val commonSettings = Seq(
-  sonatypeProfileName := "com.chatwork",
   organization := "com.chatwork",
-  scalacOptions ++= Seq(
+  homepage := Some(url("https://github.com/chatwork/akka-guard")),
+  licenses := List("The MIT License" -> url("http://opensource.org/licenses/MIT")),
+  developers := List(
+    Developer(
+      id = "j5ik2o",
+      name = "Junichi Kato",
+      email = "j5ik2o@gmail.com",
+      url = url("https://blog.j5ik2o.me")
+    ),
+    Developer(
+      id = "yoshiyoshifujii",
+      name = "Yoshitaka Fujii",
+      email = "yoshiyoshifujii@gmail.com",
+      url = url("http://yoshiyoshifujii.hatenablog.com")
+    ),
+    Developer(
+      id = "exoego",
+      name = "TATSUNO Yasuhiro",
+      email = "ytatsuno.jp@gmail.com",
+      url = url("https://www.exoego.net")
+    )
+  ),
+  scalaVersion := ScalaVersions.scala213Version,
+  scalacOptions ++= (
+    Seq(
       "-feature",
       "-deprecation",
       "-unchecked",
       "-encoding",
       "UTF-8",
-      "-language:_"
-    ) ++ {
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2L, scalaMajor)) if scalaMajor == 13 => Seq.empty
-        case Some((2L, scalaMajor)) if scalaMajor == 12 => Seq.empty
-        case Some((2L, scalaMajor)) if scalaMajor <= 11 => Seq("-Yinline-warnings")
-      }
-    },
+      "-language:_",
+      "-Ydelambdafy:method",
+      "-target:jvm-1.8",
+      "-Yrangepos",
+      "-Ywarn-unused"
+    ) ++ crossScalacOptions(scalaVersion.value)
+  ),
   resolvers ++= Seq(
-      Resolver.sonatypeRepo("snapshots"),
-      Resolver.sonatypeRepo("releases")
-    ),
+    Resolver.sonatypeRepo("snapshots"),
+    Resolver.sonatypeRepo("releases")
+  ),
   libraryDependencies ++= Seq(
-      ScalaTest.scalatest      % Test,
-      ScalaTestPlus.scalacheck % Test,
-      ScalaCheck.scalaCheck    % Test,
-      Enumeratum.latest,
-      ScalaLangModules.java8Compat
-    ),
+    ScalaTest.scalatest      % Test,
+    ScalaTestPlus.scalacheck % Test,
+    ScalaCheck.scalaCheck    % Test,
+    Enumeratum.latest,
+    ScalaLangModules.java8Compat
+  ),
   updateOptions := updateOptions.value.withCachedResolution(true),
+  semanticdbEnabled := true,
+  semanticdbVersion := scalafixSemanticdb.revision,
   Test / parallelExecution := false,
   Test / run / javaOptions ++= Seq("-Xms4g", "-Xmx4g", "-Xss10M", "-XX:+CMSClassUnloadingEnabled"),
-  publishMavenStyle := true,
-  Test / publishArtifact := false,
-  pomIncludeRepository := { _ =>
-    false
-  },
-  pomExtra := {
-    <url>https://github.com/chatwork/akka-guard</url>
-    <licenses>
-      <license>
-        <name>The MIT License</name>
-        <url>http://opensource.org/licenses/MIT</url>
-      </license>
-    </licenses>
-    <scm>
-      <url>git@github.com:chatwork/akka-guard.git</url>
-      <connection>scm:git:github.com/chatwork/akka-guard</connection>
-      <developerConnection>scm:git:git@github.com:chatwork/akka-guard.git</developerConnection>
-    </scm>
-    <developers>
-      <developer>
-        <id>yoshiyoshifujii</id>
-        <name>Yoshitaka Fujii</name>
-      </developer>
-    </developers>
-  },
-  ThisBuild / publishTo := sonatypePublishTo.value,
-  credentials := {
-    val ivyCredentials = (baseDirectory in LocalRootProject).value / ".credentials"
-    val gpgCredentials = (baseDirectory in LocalRootProject).value / ".gpgCredentials"
-    Credentials(ivyCredentials) :: Credentials(gpgCredentials) :: Nil
-  }
+  Test / publishArtifact := false
 )
 
 lazy val `akka-guard-core` = (project in file("akka-guard-core"))
   .settings(commonSettings: _*)
   .settings(
     name := "akka-guard-core",
-    scalaVersion := scala211Version,
-    crossScalaVersions := Seq(scala211Version, scala212Version, scala213Version),
+    crossScalaVersions := Seq(
+      ScalaVersions.scala211Version,
+      ScalaVersions.scala212Version,
+      ScalaVersions.scala213Version
+    ),
     libraryDependencies ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2L, scalaMajor)) if scalaMajor == 13 =>
@@ -116,12 +120,15 @@ lazy val `akka-guard-http` = (project in file("akka-guard-http"))
   .settings(commonSettings: _*)
   .settings(
     name := "akka-guard-http",
-    scalaVersion := scala211Version,
-    crossScalaVersions := Seq(scala211Version, scala212Version, scala213Version),
+    crossScalaVersions := Seq(
+      ScalaVersions.scala211Version,
+      ScalaVersions.scala212Version,
+      ScalaVersions.scala213Version
+    ),
     libraryDependencies ++= Seq(
-        AkkaHttp.testKit % Test,
-        AkkaHttp.http
-      ),
+      AkkaHttp.testKit % Test,
+      AkkaHttp.http
+    ),
     libraryDependencies ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2L, scalaMajor)) if scalaMajor == 13 =>
@@ -151,37 +158,40 @@ lazy val `akka-guard-core-typed` = (project in file("akka-guard-core-typed"))
   .settings(commonSettings: _*)
   .settings(
     name := "akka-guard-core-typed",
-    scalaVersion := scala213Version,
     libraryDependencies ++= Seq(
-        Akka.Version2_6.testKitTyped % Test,
-        Cats.Version2_1.core,
-        Circe.Version0_13.core,
-        Circe.Version0_13.generic,
-        Circe.Version0_13.parser,
-        Akka.Version2_6.actorTyped,
-        Akka.Version2_6.slf4j,
-        Logback.classic
-      )
+      Akka.Version2_6.testKitTyped % Test,
+      Cats.Version2_1.core,
+      Circe.Version0_13.core,
+      Circe.Version0_13.generic,
+      Circe.Version0_13.parser,
+      Akka.Version2_6.actorTyped,
+      Akka.Version2_6.slf4j,
+      Logback.classic
+    )
   )
 
 lazy val `akka-guard-http-typed` = (project in file("akka-guard-http-typed"))
   .settings(commonSettings: _*)
   .settings(
     name := "akka-guard-http-typed",
-    scalaVersion := scala213Version,
     libraryDependencies ++= Seq(
-        AkkaHttp.testKit              % Test,
-        Akka.Version2_6.streamTestKit % Test,
-        Akka.Version2_6.testKitTyped  % Test,
-        AkkaHttp.http,
-        Akka.Version2_6.streamTyped
-      )
+      AkkaHttp.testKit              % Test,
+      Akka.Version2_6.streamTestKit % Test,
+      Akka.Version2_6.testKitTyped  % Test,
+      AkkaHttp.http,
+      Akka.Version2_6.streamTyped
+    )
   )
   .dependsOn(`akka-guard-core-typed`)
 
 lazy val root = (project in file("."))
   .settings(commonSettings: _*)
   .settings(
-    name := "akka-guard"
+    name := "akka-guard-root",
+    publish / skip := true
   )
   .aggregate(`akka-guard-core`, `akka-guard-http`, `akka-guard-core-typed`, `akka-guard-http-typed`)
+
+// --- Custom commands
+addCommandAlias("lint", ";scalafmtCheck;test:scalafmtCheck;scalafmtSbtCheck;scalafixAll --check")
+addCommandAlias("fmt", ";scalafmtAll;scalafmtSbt")
