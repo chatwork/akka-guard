@@ -27,10 +27,15 @@ class ServiceAttackBlockerDirectivesSpec
     with ScalatestRouteTest
     with ScalaFutures {
 
+  val testTimeFactor: Int = sys.env.getOrElse("TEST_TIME_FACTOR", "1").toInt
+
   val testKit: ActorTestKit = ActorTestKit()
 
-  override implicit def patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = Span(2, Seconds), interval = Span(5, Millis))
+  implicit override val patienceConfig: PatienceConfig =
+    PatienceConfig(
+      timeout = scaled(Span(2 * testTimeFactor, Seconds)),
+      interval = scaled(Span(5 * testTimeFactor, Millis))
+    )
 
   override protected def afterAll(): Unit = {
     testKit.shutdownTestKit()
@@ -56,15 +61,15 @@ class ServiceAttackBlockerDirectivesSpec
         invokeMessageRef { messageRef =>
           assert(messageRef.?(SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Closed)
         },
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
       testProbe.awaitAssert(
         invokeMessageRef { messageRef =>
           assert(messageRef.?(SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Closed)
         },
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       (1 to 10).foreach { _ =>
@@ -77,8 +82,8 @@ class ServiceAttackBlockerDirectivesSpec
         invokeMessageRef { messageRef =>
           assert(messageRef.?(SABActor.GetStatus).mapTo[SABStatus].futureValue === SABStatus.Open)
         },
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       (1 to 10).foreach { _ =>
@@ -107,8 +112,8 @@ class ServiceAttackBlockerDirectivesSpec
     val sabConfig: SABConfig =
       SABConfig(
         maxFailures = 9,
-        failureDuration = 10.seconds,
-        backoff = LinealBackoff(1.hour)
+        failureDuration = (10 * testTimeFactor).seconds,
+        backoff = LinealBackoff((1 * testTimeFactor).hour)
       )
 
     val blocker: ServiceAttackBlocker   = ServiceAttackBlocker(system, sabConfig)(failedResponse, isFailed)

@@ -23,7 +23,7 @@ class SABReceiveTimeoutSpec
     with ScalaCheckPropertyChecks
     with Matchers
     with ScalaFutures {
-  val BoundaryLength           = 50
+  val BoundaryLength: Int      = 50
   val genShortStr: Gen[String] = Gen.asciiStr.suchThat(_.length < BoundaryLength)
   val genLongStr: Gen[String]  = Gen.asciiStr.suchThat(_.length >= BoundaryLength)
 
@@ -33,16 +33,28 @@ class SABReceiveTimeoutSpec
   val failedResponse: Try[String] = Failure(new Exception(failedMessage))
   val isFailed: String => Boolean = _ => false
 
+  val testTimeFactor: Int = sys.env.getOrElse("TEST_TIME_FACTOR", "1").toInt
+
+  implicit override val patienceConfig: PatienceConfig =
+    PatienceConfig(
+      timeout = scaled(Span(5 * testTimeFactor, Seconds)),
+      interval = scaled(Span(15 * testTimeFactor, Millis))
+    )
+
   "SABReceiveTimeout" - {
     "receive timeout" in {
-      implicit val timeout: Timeout = Timeout(5 seconds)
+      implicit val timeout: Timeout = Timeout((5 * testTimeFactor).seconds)
       val sabBrokerName1: String    = "broker-1"
       val messageId: String         = "id-1"
       val config: SABConfig = SABConfig(
         maxFailures = 9,
-        failureDuration = 10.seconds,
-        backoff = ExponentialBackoff(minBackoff = 1 seconds, maxBackoff = 5 seconds, randomFactor = 0.2),
-        guardResetTimeout = Some(3 seconds)
+        failureDuration = (10 * testTimeFactor).seconds,
+        backoff = ExponentialBackoff(
+          minBackoff = (1 * testTimeFactor).seconds,
+          maxBackoff = (5 * testTimeFactor).seconds,
+          randomFactor = 0.2
+        ),
+        guardResetTimeout = Some((3 * testTimeFactor).seconds)
       )
       val handler: String => Future[String] = {
         case request if request.length < BoundaryLength  => Future.failed(new Exception(errorMessage))
@@ -55,7 +67,7 @@ class SABReceiveTimeoutSpec
       val message1 = SABMessage(messageId, "A" * 50, handler)
       (sabBroker ? message1).mapTo[String].futureValue shouldBe successMessage
 
-      Thread.sleep(1000 * 5)
+      Thread.sleep(1000 * 5 * testTimeFactor)
 
       (sabBroker ? message1).mapTo[String].futureValue shouldBe successMessage
 

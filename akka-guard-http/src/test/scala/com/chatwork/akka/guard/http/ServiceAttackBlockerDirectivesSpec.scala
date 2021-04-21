@@ -18,7 +18,9 @@ import scala.util.{ Success, Try }
 
 class ServiceAttackBlockerDirectivesSpec extends AnyFreeSpec with Matchers with ScalatestRouteTest with ScalaFutures {
 
-  implicit val timeout: Timeout = Timeout(4.seconds)
+  val testTimeFactor: Int = sys.env.getOrElse("TEST_TIME_FACTOR", "1").toInt
+
+  implicit val timeout: Timeout = Timeout((4 * testTimeFactor).seconds)
   val clientId                  = "id-1"
   val uri: String => String     = prefix => s"/$prefix/$clientId"
 
@@ -36,8 +38,8 @@ class ServiceAttackBlockerDirectivesSpec extends AnyFreeSpec with Matchers with 
           .?(SABActor.GetStatus)
           .mapTo[SABStatus]
           .futureValue == SABStatus.Closed,
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       (1 to 10).foreach { _ =>
@@ -51,8 +53,8 @@ class ServiceAttackBlockerDirectivesSpec extends AnyFreeSpec with Matchers with 
           .?(SABActor.GetStatus)
           .mapTo[SABStatus]
           .futureValue == SABStatus.Open,
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       (1 to 10).foreach { _ =>
@@ -81,7 +83,7 @@ class ServiceAttackBlockerDirectivesSpec extends AnyFreeSpec with Matchers with 
     val sabConfig: SABConfig =
       SABConfig(
         maxFailures = 9,
-        failureDuration = 10.seconds,
+        failureDuration = (10 * testTimeFactor).seconds,
         backoff = LinealBackoff(1.hour)
       )
 

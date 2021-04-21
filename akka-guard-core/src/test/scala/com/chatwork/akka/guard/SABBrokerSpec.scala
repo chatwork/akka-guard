@@ -35,6 +35,14 @@ class SABBrokerSpec
   val failedResponse: Try[String] = Failure(new Exception(failedMessage))
   val isFailed: String => Boolean = _ => false
 
+  val testTimeFactor: Int = sys.env.getOrElse("TEST_TIME_FACTOR", "1").toInt
+
+  implicit override val patienceConfig: PatienceConfig =
+    PatienceConfig(
+      timeout = scaled(Span(5 * testTimeFactor, Seconds)),
+      interval = scaled(Span(15 * testTimeFactor, Millis))
+    )
+
   Feature("SABBrokerSpec") {
 
     Scenario("Success in LinealBackoff") {
@@ -45,8 +53,8 @@ class SABBrokerSpec
       val messageId: String         = "id-1"
       val config: SABConfig = SABConfig(
         maxFailures = 9,
-        failureDuration = 10.seconds,
-        backoff = LinealBackoff(1.hour)
+        failureDuration = (10 * testTimeFactor).seconds,
+        backoff = LinealBackoff((1 * testTimeFactor).hour)
       )
       val handler: String => Future[String] = {
         case request if request.length < BoundaryLength  => Future.failed(new Exception(errorMessage))
@@ -90,7 +98,7 @@ class SABBrokerSpec
 
       Given("broker pattern 2")
       import system.dispatcher
-      implicit val timeout: Timeout = Timeout(5.seconds)
+      implicit val timeout: Timeout = Timeout((5 * testTimeFactor).seconds)
       val sabBrokerName2: String    = "broker-2"
       val messageId: String         = "id-2"
       val config: SABConfig = SABConfig(
@@ -100,7 +108,7 @@ class SABBrokerSpec
       )
       val handler: String => Future[String] = _ =>
         Future {
-          Thread.sleep(1000L)
+          Thread.sleep(1000L * testTimeFactor)
           successMessage
         }
       val sabBroker: ActorRef = system.actorOf(Props(new SABBroker(config, failedResponse, isFailed)), sabBrokerName2)
@@ -111,9 +119,6 @@ class SABBrokerSpec
     }
 
   }
-
-  override implicit def patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = Span(2, Seconds), interval = Span(5, Millis))
 
   override protected def afterAll(): Unit = {
     shutdown()

@@ -27,8 +27,13 @@ class SABReceiveTimeoutSpec
     with ScalaFutures {
   val testKit: ActorTestKit = ActorTestKit()
 
-  override implicit def patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = Span(2, Seconds), interval = Span(5, Millis))
+  val testTimeFactor: Int = sys.env.getOrElse("TEST_TIME_FACTOR", "1").toInt
+
+  implicit override val patienceConfig: PatienceConfig =
+    PatienceConfig(
+      timeout = scaled(Span(2 * testTimeFactor, Seconds)),
+      interval = scaled(Span(5 * testTimeFactor, Millis))
+    )
 
   override protected def afterAll(): Unit = {
     testKit.shutdownTestKit()
@@ -50,14 +55,18 @@ class SABReceiveTimeoutSpec
   "SABReceiveTimeout typed" - {
     "receive timeout" in {
       import testKit.system
-      implicit val timeout: Timeout = Timeout(5 seconds)
+      implicit val timeout: Timeout = Timeout((5 * testTimeFactor).seconds)
       val sabBrokerName1: String    = "broker-1"
       val messageId: String         = "id-1"
       val config: SABConfig = SABConfig(
         maxFailures = 9,
-        failureDuration = 10.seconds,
-        backoff = ExponentialBackoff(minBackoff = 1 seconds, maxBackoff = 5 seconds, randomFactor = 0.2),
-        guardResetTimeout = Some(3 seconds)
+        failureDuration = (10 * testTimeFactor).seconds,
+        backoff = ExponentialBackoff(
+          minBackoff = (1 * testTimeFactor).seconds,
+          maxBackoff = (5 * testTimeFactor).seconds,
+          randomFactor = 0.2
+        ),
+        guardResetTimeout = Some((3 * testTimeFactor).seconds)
       )
       val handler: T => Future[R] = {
         case request if request.length < BoundaryLength  => Future.failed(new Exception(errorMessage))
@@ -74,7 +83,7 @@ class SABReceiveTimeoutSpec
       val message1 = createMessage("A" * 50)
       sabBroker.ask[Try[String]](message1(_)).futureValue shouldBe successMessage
 
-      Thread.sleep(1000 * 5)
+      Thread.sleep(1000 * 5 * testTimeFactor)
 
       sabBroker.ask[Try[String]](message1(_)).futureValue shouldBe successMessage
 

@@ -28,8 +28,13 @@ class SABBrokerSpec
     with ScalaFutures {
   val testKit: ActorTestKit = ActorTestKit()
 
-  override implicit def patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = Span(2, Seconds), interval = Span(5, Millis))
+  val testTimeFactor: Int = sys.env.getOrElse("TEST_TIME_FACTOR", "1").toInt
+
+  implicit override val patienceConfig: PatienceConfig =
+    PatienceConfig(
+      timeout = scaled(Span(5 * testTimeFactor, Seconds)),
+      interval = scaled(Span(15 * testTimeFactor, Millis))
+    )
 
   override protected def afterAll(): Unit = {
     testKit.shutdownTestKit()
@@ -54,15 +59,15 @@ class SABBrokerSpec
 
       Given("broker pattern 1")
       import testKit.system
-      implicit val timeout: Timeout = Timeout(5.seconds)
+      implicit val timeout: Timeout = Timeout((5 * testTimeFactor).seconds)
       import akka.actor.typed.scaladsl.AskPattern._
 
       val sabBrokerName1: String = "broker-1"
       val messageId: String      = "id-1"
       val config: SABConfig = SABConfig(
         maxFailures = 9,
-        failureDuration = 10.seconds,
-        backoff = LinealBackoff(1.hour)
+        failureDuration = (10 * testTimeFactor).seconds,
+        backoff = LinealBackoff((1 * testTimeFactor).hour)
       )
       val handler: T => Future[R] = {
         case request if request.length < BoundaryLength  => Future.failed(new Exception(errorMessage))
@@ -122,12 +127,12 @@ class SABBrokerSpec
       val messageId: String      = "id-2"
       val config: SABConfig = SABConfig(
         maxFailures = 9,
-        failureDuration = 500.milliseconds,
-        backoff = LinealBackoff(1.hour)
+        failureDuration = (500 * testTimeFactor).milliseconds,
+        backoff = LinealBackoff((1 * testTimeFactor).hour)
       )
       val handler: T => Future[R] = _ =>
         Future {
-          Thread.sleep(1000L)
+          Thread.sleep(1000L * testTimeFactor)
           successMessage
         }
       val sabBrokerBehavior                      = SABBroker(config, failedResponse, isFailed)

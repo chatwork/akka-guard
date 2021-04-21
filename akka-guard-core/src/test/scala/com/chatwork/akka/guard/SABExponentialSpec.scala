@@ -30,15 +30,27 @@ class SABExponentialSpec
   val failedResponse: Try[String] = Failure(new Exception(failedMessage))
   val isFailed: String => Boolean = _ => false
 
+  val testTimeFactor: Int = sys.env.getOrElse("TEST_TIME_FACTOR", "1").toInt
+
+  implicit override val patienceConfig: PatienceConfig =
+    PatienceConfig(
+      timeout = scaled(Span(5 * testTimeFactor, Seconds)),
+      interval = scaled(Span(15 * testTimeFactor, Millis))
+    )
+
   "SABExponential" - {
     "auto reset" in {
-      implicit val timeout: Timeout = Timeout(5 seconds)
+      implicit val timeout: Timeout = Timeout((5 * testTimeFactor).seconds)
       val sabBrokerName1: String    = "broker-1"
       val messageId: String         = "id-1"
       val config: SABConfig = SABConfig(
         maxFailures = 9,
         failureDuration = 10.seconds,
-        backoff = ExponentialBackoff(minBackoff = 2 seconds, maxBackoff = 10 seconds, randomFactor = 0.2)
+        backoff = ExponentialBackoff(
+          minBackoff = (2 * testTimeFactor).seconds,
+          maxBackoff = (10 * testTimeFactor).seconds,
+          randomFactor = 0.2
+        )
       )
       val handler: String => Future[String] = {
         case request if request.length < BoundaryLength  => Future.failed(new Exception(errorMessage))
@@ -93,15 +105,15 @@ class SABExponentialSpec
 
       awaitCond(
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed,
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       awaitCond(
         (messageRef ? SABActor.GetAttemptRequest(messageId))
           .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 0,
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       val message2 = SABMessage(messageId, "A" * 49, handler)
@@ -109,8 +121,8 @@ class SABExponentialSpec
 
       awaitCond(
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open,
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       testProbe.expectMsg(BecameClosed(1, 0, setTimer = true))
@@ -119,22 +131,22 @@ class SABExponentialSpec
       awaitCond(
         (messageRef ? SABActor.GetAttemptRequest(messageId))
           .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 1,
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       awaitCond(
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed,
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
       awaitCond(
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open,
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       testProbe.expectMsg(BecameClosed(2, 0, setTimer = true))
@@ -143,29 +155,29 @@ class SABExponentialSpec
       awaitCond(
         (messageRef ? SABActor.GetAttemptRequest(messageId))
           .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 2,
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       awaitCond(
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed,
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
       awaitCond(
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open,
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       awaitCond(
         (messageRef ? SABActor.GetAttemptRequest(messageId))
           .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 3,
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       testProbe.expectMsg(BecameClosed(0, 0, setTimer = true))
@@ -173,23 +185,23 @@ class SABExponentialSpec
 
       awaitCond(
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed,
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
       awaitCond(
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Open,
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       awaitCond(
         (messageRef ? SABActor.GetAttemptRequest(messageId))
           .mapTo[SABActor.GetAttemptResponse].futureValue.attempt == 1,
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
       testProbe.expectMsg(BecameClosed(1, 0, setTimer = true))
@@ -197,15 +209,12 @@ class SABExponentialSpec
 
       awaitCond(
         (messageRef ? SABActor.GetStatus).mapTo[SABStatus].futureValue == SABStatus.Closed,
-        5 seconds,
-        1 second
+        (5 * testTimeFactor).seconds,
+        (1 * testTimeFactor).second
       )
 
     }
   }
-
-  override implicit def patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = Span(2, Seconds), interval = Span(5, Millis))
 
   override protected def afterAll(): Unit = {
     shutdown()
