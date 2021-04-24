@@ -2,7 +2,7 @@ package com.chatwork.akka.guard
 
 import akka.actor.{ ActorPath, ActorRef, ActorSelection, ActorSystem, Props }
 import akka.pattern.ask
-import akka.testkit.TestKit
+import akka.testkit.{ ImplicitSender, TestKit }
 import akka.util.{ Timeout => AkkaTimeout }
 import org.scalacheck.Gen
 import org.scalatest.BeforeAndAfterAll
@@ -24,7 +24,8 @@ class SABReceiveTimeoutSpec
     with ScalaCheckPropertyChecks
     with Matchers
     with ScalaFutures
-    with Eventually {
+    with Eventually
+    with ImplicitSender {
   val BoundaryLength: Int      = 50
   val genShortStr: Gen[String] = Gen.asciiStr.suchThat(_.length < BoundaryLength)
   val genLongStr: Gen[String]  = Gen.asciiStr.suchThat(_.length >= BoundaryLength)
@@ -39,8 +40,8 @@ class SABReceiveTimeoutSpec
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(
-      timeout = scaled(Span(30 * testTimeFactor, Seconds)),
-      interval = scaled(Span(2 * testTimeFactor, Millis))
+      timeout = scaled(Span(3 * testTimeFactor, Seconds)),
+      interval = scaled(Span(1 * testTimeFactor, Millis))
     )
 
   "SABReceiveTimeout untyped" - {
@@ -66,7 +67,7 @@ class SABReceiveTimeoutSpec
       val messagePath: ActorPath     = system / sabBrokerName1 / SABSupervisor.name(messageId) / SABActor.name(messageId)
       val messageRef: ActorSelection = system.actorSelection(messagePath)
 
-      val message1 = SABMessage(messageId, "A" * 50, handler)
+      val message1 = SABMessage(messageId, "A" * BoundaryLength, handler)
       (sabBroker ? message1).mapTo[String].futureValue shouldBe successMessage
 
       Thread.sleep(1000 * 5 * testTimeFactor)
@@ -74,16 +75,20 @@ class SABReceiveTimeoutSpec
       (sabBroker ? message1).mapTo[String].futureValue shouldBe successMessage
 
       eventually(Timeout((15 * testTimeFactor).seconds)) {
-        (messageRef ? SABActor.GetStatus)
-          .mapTo[SABStatus].futureValue shouldBe SABStatus.Closed
+        messageRef ! SABActor.GetStatus
+        val result = expectMsgType[SABStatus]((1 * testTimeFactor).seconds)
+        println(s"1) GetStatus: result = $result")
+        result shouldBe SABStatus.Closed
       }
 
-      val message2 = SABMessage(messageId, "A" * 49, handler)
+      val message2 = SABMessage(messageId, "A" * (BoundaryLength - 1), handler)
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
       eventually(Timeout((15 * testTimeFactor).seconds)) {
-        (messageRef ? SABActor.GetStatus)
-          .mapTo[SABStatus].futureValue shouldBe SABStatus.Open
+        messageRef ! SABActor.GetStatus
+        val result = expectMsgType[SABStatus]((1 * testTimeFactor).seconds)
+        println(s"2) GetStatus: result = $result")
+        result shouldBe SABStatus.Open
       }
 
       (messageRef ? SABActor.GetAttemptRequest(messageId))
