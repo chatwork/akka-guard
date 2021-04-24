@@ -62,7 +62,7 @@ class SABBrokerSpec
       }
       val sabBroker: ActorRef        = system.actorOf(Props(new SABBroker(config, failedResponse, isFailed)), sabBrokerName1)
       val messagePath: ActorPath     = system / sabBrokerName1 / SABSupervisor.name(messageId) / SABActor.name(messageId)
-      val messageRef: ActorSelection = system.actorSelection(messagePath)
+      def messageRef: ActorSelection = system.actorSelection(messagePath)
 
       When("Long input")
       Then("return success message")

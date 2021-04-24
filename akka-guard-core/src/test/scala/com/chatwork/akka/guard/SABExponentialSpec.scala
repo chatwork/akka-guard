@@ -100,7 +100,7 @@ class SABExponentialSpec
         sabBrokerName1
       )
       val messagePath: ActorPath     = system / sabBrokerName1 / SABSupervisor.name(messageId) / SABActor.name(messageId)
-      val messageRef: ActorSelection = system.actorSelection(messagePath)
+      def messageRef: ActorSelection = system.actorSelection(messagePath)
 
       val message1 = SABMessage(messageId, "A" * 50, handler)
       (sabBroker ? message1).mapTo[String].futureValue shouldBe successMessage
