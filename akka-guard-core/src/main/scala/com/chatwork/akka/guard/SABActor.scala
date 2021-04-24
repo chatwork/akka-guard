@@ -5,8 +5,8 @@ import akka.pattern.pipe
 
 import scala.concurrent._
 import scala.concurrent.duration._
+import scala.util.Try
 import scala.util.control.NonFatal
-import scala.util.{ Failure, Success, Try }
 
 object SABActor {
 
@@ -149,17 +149,18 @@ sealed abstract class SABActor[T, R](
     case ManualReset         => becomeClosed(attempt = 0, failureCount = failureCount, fireEventHandler = false)
 
     case msg: Message =>
-      val future =
+      val future = {
         try {
           msg.execute
         } catch {
           case NonFatal(cause) => Future.failed(cause)
         }
-      future.onComplete {
-        case Failure(_)                 => self ! Failed(failureCount)
-        case Success(r) if isFailed(r)  => self ! Failed(failureCount)
-        case Success(r) if !isFailed(r) => self ! BecameClosed(attempt, 0, setTimer = false)
       }
+      future
+        .map {
+          case r if isFailed(r)  => Failed(failureCount)
+          case r if !isFailed(r) => BecameClosed(attempt, 0, setTimer = false)
+        }.recover { case _ => Failed(failureCount) }.pipeTo(self)
       reply(future)
 
   }

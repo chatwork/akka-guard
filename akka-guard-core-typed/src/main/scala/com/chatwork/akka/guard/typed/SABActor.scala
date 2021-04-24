@@ -182,17 +182,18 @@ object SABActor {
           reset(attempt)
       case Failed(failedCount) => fail(attempt, failedCount)
       case msg: Message =>
-        val future =
+        val future = {
           try {
             msg.execute
           } catch {
             case NonFatal(cause) => Future.failed(cause)
           }
-        future.onComplete {
-          case Failure(_)                => context.self ! Failed(failureCount)
-          case Success(r) if isFailed(r) => context.self ! Failed(failureCount)
-          case Success(r)                => context.self ! BecameClosed(attempt, 0, setTimer = false)
-        }(context.executionContext)
+        }
+        context.pipeToSelf(future) {
+          case Failure(_)                => Failed(failureCount)
+          case Success(r) if isFailed(r) => Failed(failureCount)
+          case Success(_)                => BecameClosed(attempt, 0, setTimer = false)
+        }
         reply(future, msg.replyTo)
     }
 

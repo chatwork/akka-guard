@@ -66,7 +66,7 @@ class SABReceiveTimeoutSpec
       val messagePath: ActorPath     = system / sabBrokerName1 / SABSupervisor.name(messageId) / SABActor.name(messageId)
       val messageRef: ActorSelection = system.actorSelection(messagePath)
 
-      val message1 = SABMessage(messageId, "A" * 50, handler)
+      val message1 = SABMessage(messageId, "A" * BoundaryLength, handler)
       (sabBroker ? message1).mapTo[String].futureValue shouldBe successMessage
 
       Thread.sleep(1000 * 5 * testTimeFactor)
@@ -78,7 +78,7 @@ class SABReceiveTimeoutSpec
           .mapTo[SABStatus].futureValue shouldBe SABStatus.Closed
       }
 
-      val message2 = SABMessage(messageId, "A" * 49, handler)
+      val message2 = SABMessage(messageId, "A" * (BoundaryLength - 1), handler)
       for { _ <- 1 to 10 } (sabBroker ? message2).mapTo[String].failed.futureValue
 
       eventually(Timeout((15 * testTimeFactor).seconds)) {
