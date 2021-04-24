@@ -5,14 +5,10 @@ import java.util.concurrent.ThreadLocalRandom
 import scala.concurrent.duration.{ Duration, FiniteDuration }
 
 sealed trait Backoff {
-  val strategy: SABBackoffStrategy
-
   def toDuration(attempt: Long): FiniteDuration
 }
 
 case class LinealBackoff(duration: FiniteDuration) extends Backoff {
-  override val strategy: SABBackoffStrategy = SABBackoffStrategy.Lineal
-
   override def toDuration(attempt: Long): FiniteDuration = duration
 }
 
@@ -33,8 +29,6 @@ case class ExponentialBackoff(
       require(minBackoff <= resetBackoff && resetBackoff <= maxBackoff)
     case _ => // ignore
   }
-
-  override val strategy: SABBackoffStrategy = SABBackoffStrategy.Exponential
 
   override def toDuration(attempt: Long): FiniteDuration = {
     val rnd = 1.0 + ThreadLocalRandom.current().nextDouble() * randomFactor
