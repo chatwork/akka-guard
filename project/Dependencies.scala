@@ -46,7 +46,7 @@ object Cats {
   }
 
   object Version2_1 {
-    val core = "org.typelevel" %% "cats-core" % "2.6.0"
+    val core = "org.typelevel" %% "cats-core" % "2.6.1"
   }
 }
 
