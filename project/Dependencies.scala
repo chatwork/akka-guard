@@ -8,7 +8,7 @@ object ScalaVersions {
 }
 
 object ScalaLangModules {
-  val java8Compat      = "org.scala-lang.modules" %% "scala-java8-compat"      % "0.9.1"
+  val java8Compat      = "org.scala-lang.modules" %% "scala-java8-compat"      % "1.0.0"
   val collectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.4"
 }
 
