@@ -51,7 +51,7 @@ object Cats {
 }
 
 object Enumeratum {
-  val latest = "com.beachape" %% "enumeratum" % "1.6.1"
+  val latest = "com.beachape" %% "enumeratum" % "1.7.0"
 }
 
 object ScalaCheck {
