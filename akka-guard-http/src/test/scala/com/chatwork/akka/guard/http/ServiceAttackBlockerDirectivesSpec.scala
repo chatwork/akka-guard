@@ -12,6 +12,7 @@ import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.{ Eventually, ScalaFutures }
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.time.{ Millis, Seconds, Span }
 
 import scala.concurrent.duration._
 import scala.util.{ Success, Try }
@@ -24,6 +25,12 @@ class ServiceAttackBlockerDirectivesSpec
     with Eventually {
 
   val testTimeFactor: Int = sys.env.getOrElse("TEST_TIME_FACTOR", "1").toInt
+
+  implicit override val patienceConfig: PatienceConfig =
+    PatienceConfig(
+      timeout = scaled(Span(3 * testTimeFactor, Seconds)),
+      interval = scaled(Span(1 * testTimeFactor, Millis))
+    )
 
   implicit val timeout: AkkaTimeout = AkkaTimeout((4 * testTimeFactor).seconds)
   val clientId                      = "id-1"

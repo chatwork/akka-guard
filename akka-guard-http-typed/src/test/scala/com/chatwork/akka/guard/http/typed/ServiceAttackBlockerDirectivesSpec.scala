@@ -35,8 +35,8 @@ class ServiceAttackBlockerDirectivesSpec
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(
-      timeout = scaled(Span(30 * testTimeFactor, Seconds)),
-      interval = scaled(Span(2 * testTimeFactor, Millis))
+      timeout = scaled(Span(3 * testTimeFactor, Seconds)),
+      interval = scaled(Span(1 * testTimeFactor, Millis))
     )
 
   override protected def afterAll(): Unit = {
