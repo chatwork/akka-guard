@@ -39,8 +39,8 @@ class SABBrokerSpec
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(
-      timeout = scaled(Span(30 * testTimeFactor, Seconds)),
-      interval = scaled(Span(5 * testTimeFactor, Millis))
+      timeout = scaled(Span(3 * testTimeFactor, Seconds)),
+      interval = scaled(Span(1 * testTimeFactor, Millis))
     )
 
   Feature("SABBrokerSpec untyped") {
@@ -62,7 +62,7 @@ class SABBrokerSpec
       }
       val sabBroker: ActorRef        = system.actorOf(Props(new SABBroker(config, failedResponse, isFailed)), sabBrokerName1)
       val messagePath: ActorPath     = system / sabBrokerName1 / SABSupervisor.name(messageId) / SABActor.name(messageId)
-      val messageRef: ActorSelection = system.actorSelection(messagePath)
+      def messageRef: ActorSelection = system.actorSelection(messagePath)
 
       When("Long input")
       Then("return success message")
